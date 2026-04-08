@@ -47,12 +47,12 @@ jobs:
       - name: Install liblzma
         shell: bash
         run: |
-          vcpkg install liblzma --triplet=${{ matrix.triplet }}-dynamic #--no-binarycaching
+          vcpkg install liblzma --triplet=${{ matrix.triplet }} #--no-binarycaching
 
       - name: Copy liblzma to Output Directory
         shell: bash
         run: |
-            ls -l vcpkg/installed/${{ matrix.triplet }}-dynamic/lib
+            ls -l vcpkg/installed/${{ matrix.triplet }}/lib
       #     mkdir -p ZCS.XZ/target/release/${{ matrix.triplet }}
       #     #cp hypertrie/target/${{ matrix.target }}/release/${{ matrix.lib_name }} ZCS.XZ/target/release/${{ matrix.output_dir }}/
       
