@@ -47,38 +47,38 @@ jobs:
       - name: Install liblzma
         shell: bash
         run: |
-          vcpkg install liblzma --triplet=${{ matrix.triplet }} #--no-binarycaching
+          vcpkg install liblzma --triplet=${{ matrix.triplet }}-dynamic
 
       - name: Copy liblzma to Output Directory
         shell: bash
         run: |
-            ls -l vcpkg/installed/${{ matrix.triplet }}/lib
-      #     mkdir -p ZCS.XZ/target/release/${{ matrix.triplet }}
-      #     #cp hypertrie/target/${{ matrix.target }}/release/${{ matrix.lib_name }} ZCS.XZ/target/release/${{ matrix.output_dir }}/
-      
-      # - name: Upload Library
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: native-lib-${{ matrix.platform }}
-      #     path: ZCS.XZ/target/release/${{ matrix.output_dir }}
+            mkdir -p ZCS.XZ/target/release/${{ matrix.triplet }}
+            cp -L vcpkg/installed/${{ matrix.triplet }}-dynamic/lib/*.{so,dylib,dll} ZCS.XZ/target/release/${{ matrix.triplet }}/
+            ls -l ZCS.XZ/target/release/${{ matrix.triplet }}/
+     
+      - name: Upload Library
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-lib-${{ matrix.platform }}
+          path: ZCS.XZ/target/release/${{ matrix.triplet }}
 
-  # build-nuget:
-  #   needs: [build-liblzma]
-  #   runs-on: ubuntu-latest
-  #   if: always() && needs.build-liblzma.result == 'success'
-  #   steps:
-  #     - uses: actions/checkout@v4
+  build-nuget:
+    needs: [build-liblzma]
+    runs-on: ubuntu-latest
+    if: always() && needs.build-liblzma.result == 'success'
+    steps:
+      - uses: actions/checkout@v4
       
-  #     - name: Install .NET SDK
-  #       uses: actions/setup-dotnet@v4
-  #       with:
-  #         dotnet-version: '10.0.x'
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
       
-  #     - name: Download Linux Library
-  #       uses: actions/download-artifact@v4
-  #       with:
-  #         name: native-lib-linux-x64
-  #         path: ZCS.XZ/target/release/linux-x64
+      - name: Download Linux Library
+        uses: actions/download-artifact@v4
+        with:
+          name: native-lib-linux-x64
+          path: ZCS.XZ/target/release/linux-x64
       
   #     - name: Download Windows x64 Library
   #       uses: actions/download-artifact@v4
@@ -97,5 +97,8 @@ jobs:
   #       with:
   #         name: native-lib-macos-arm64
   #         path: ZCS.XZ/target/release/osx-arm64
-      
+      - name: Build
+        shell: bash
+        run: |
+          ls -l ZCS.XZ/target/release/
       
