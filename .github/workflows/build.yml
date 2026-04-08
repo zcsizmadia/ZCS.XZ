@@ -21,115 +21,136 @@ jobs:
             triplet: x64-linux-dynamic
             lib_file: lib/liblzma.so
             exe_file: tools/liblzma/xz
+            runtime_arch: linux-x64
 
           - platform: linux-arm64
             os: ubuntu-24.04-arm
             triplet: arm64-linux-dynamic
             lib_file: lib/liblzma.so
             exe_file: tools/liblzma/xz
+            runtime_arch: linux-arm64
 
           - platform: windows-x64
             os: windows-latest
             triplet: x64-windows
             lib_file: bin/liblzma.dll
             exe_file: tools/liblzma/xz.exe
+            runtime_arch: win-x64
 
           - platform: windows-arm64
             os: windows-11-arm
             triplet: arm64-windows
             lib_file: bin/liblzma.dll
             exe_file: tools/liblzma/xz.exe
+            runtime_arch: win-arm64
 
           - platform: macos-x64
             os: macos-latest
             triplet: x64-osx-dynamic
             lib_file: lib/liblzma.dylib
             exe_file: tools/liblzma/xz
+            runtime_arch: osx-x64
 
           - platform: macos-arm64
             os: macos-latest
             triplet: arm64-osx-dynamic
             lib_file: lib/liblzma.dylib
             exe_file: tools/liblzma/xz
+            runtime_arch: osx-arm64
 
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install vcpkg
         uses: lukka/run-vcpkg@v11 # microsoft/vcpkg-action@v2
         with:
           vcpkgGitCommitId: "81e3c888ef717a026eb57bb2f3cb0dbd30246271"
 
-      - name: Build Library
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: |
+            - 8.0.x
+            - 9.0.x
+            - 10.0.x
+
+      - name: Build lzma Library
         shell: bash
         run: |
           vcpkg install liblzma[tools]:${{ matrix.triplet }}
-          find vcpkg/installed/${{ matrix.triplet }}
+          #find vcpkg/installed/${{ matrix.triplet }}
 
-      - name: Copy to Output Directory
+      - name: Copy lzma Library to Output Directory
         shell: bash
         run: |
-            mkdir -p ZCS.XZ/target/release/${{ matrix.triplet }}
-            cp -L vcpkg/installed/${{ matrix.triplet }}/${{ matrix.lib_file }} ZCS.XZ/target/release/${{ matrix.triplet }}/
-            cp -L vcpkg/installed/${{ matrix.triplet }}/${{ matrix.exe_file }} ZCS.XZ/target/release/${{ matrix.triplet }}/
-            ls -l ZCS.XZ/target/release/${{ matrix.triplet }}/
-     
+            mkdir -p ZCS.XZ/ZCS.XZ/runtimes/${{ matrix.runtime_arch }}/native
+            cp -L vcpkg/installed/${{ matrix.triplet }}/${{ matrix.lib_file }} ZCS.XZ/ZCS.XZ/runtimes/${{ matrix.runtime_arch }}/native/
+            cp -L vcpkg/installed/${{ matrix.triplet }}/${{ matrix.exe_file }} ZCS.XZ/ZCS.XZ/runtimes/${{ matrix.runtime_arch }}/native/
+
+      - name: Build Project
+        shell: bash
+        run: |
+          dotnet build ZCS.XZ/ZCS.XZ.csproj -c Release
+
       - name: Upload Library
         uses: actions/upload-artifact@v4
         with:
           name: native-lib-${{ matrix.platform }}
-          path: ZCS.XZ/target/release/${{ matrix.triplet }}
+          path: ZCS.XZ/ZCS.XZ/runtimes/${{ matrix.runtime_arch }}/native
 
   # build-nuget:
   #   needs: [build-liblzma]
   #   runs-on: ubuntu-latest
   #   if: always() && needs.build-liblzma.result == 'success'
   #   steps:
-  #     - uses: actions/checkout@v4
+  #     - uses: actions/checkout@v6
       
   #     - name: Install .NET SDK
-  #       uses: actions/setup-dotnet@v4
+  #       uses: actions/setup-dotnet@v5
   #       with:
-  #         dotnet-version: '10.0.x'
+  #         dotnet-version: |
+  #           - 8.0.x
+  #           - 9.0.x
+  #           - 10.0.x
       
   #     - name: Download Linux Library
   #       uses: actions/download-artifact@v4
   #       with:
   #         name: native-lib-linux-x64
-  #         path: ZCS.XZ/target/release/linux-x64
+  #         path: ZCS.XZ/ZCS.XZ/runtimes/linux-x64/native
 
   #     - name: Download Linux ARM64 Library
   #       uses: actions/download-artifact@v4
   #       with:
   #         name: native-lib-linux-arm64
-  #         path: ZCS.XZ/target/release/linux-arm64
+  #         path: ZCS.XZ/ZCS.XZ/runtimes/linux-arm64/native
 
   #     - name: Download Windows x64 Library
   #       uses: actions/download-artifact@v4
   #       with:
   #         name: native-lib-windows-x64
-  #         path: ZCS.XZ/target/release/windows-x64
-      
+  #         path: ZCS.XZ/ZCS.XZ/runtimes/win-x64/native
+
   #     - name: Download Windows ARM64 Library
   #       uses: actions/download-artifact@v4
   #       with:
   #         name: native-lib-windows-arm64
-  #         path: ZCS.XZ/target/release/windows-arm64
+  #         path: ZCS.XZ/ZCS.XZ/runtimes/win-arm64/native
 
   #     - name: Download macOS x64 Library
   #       uses: actions/download-artifact@v4
   #       with:
   #         name: native-lib-macos-x64
-  #         path: ZCS.XZ/target/release/osx-x64
+  #         path: ZCS.XZ/ZCS.XZ/runtimes/osx-x64/native
 
   #     - name: Download macOS ARM64 Library
   #       uses: actions/download-artifact@v4
   #       with:
   #         name: native-lib-macos-arm64
-  #         path: ZCS.XZ/target/release/osx-arm64
+  #         path: ZCS.XZ/ZCS.XZ/runtimes/osx-arm64/native
 
   #     - name: Build
   #       shell: bash
   #       run: |
-  #         ls -lR ZCS.XZ/target/release/
+  #         ls -lR ZCS.XZ/ZCS.XZ/runtimes/
