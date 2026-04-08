@@ -47,7 +47,11 @@ jobs:
       - name: Install liblzma
         shell: bash
         run: |
-          vcpkg install liblzma:${{ matrix.triplet }} #--no-binarycaching
+          #vcpkg install liblzma:${{ matrix.triplet }} #--no-binarycaching
+          git clone https://github.com/tukaani-project/xz.git
+          cd xz
+          ./configure --enable-shared
+          make
       
       - name: Copy liblzma to Output Directory
         shell: bash
