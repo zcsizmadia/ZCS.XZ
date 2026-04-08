@@ -12,55 +12,47 @@ permissions:
   contents: write
   packages: write
 
-
 jobs:
   build-liblzma:
     strategy:
       matrix:
-        platform: [linux-x64, windows-x64, windows-x86, macos-arm64]
+        platform: [linux-x64, windows-x64, windows-x86, macos-arm64, macos-x64]
         include:
           - platform: linux-x64
             os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            lib_name: liblzma.so
-            output_dir: linux-x64
+            triplet: x64-linux
 
           - platform: windows-x64
             os: windows-latest
-            target: x86_64-pc-windows-msvc
-            lib_name: liblzma.dll
-            output_dir: windows-x64
+            triplet: x64-windows
 
           - platform: windows-x86
             os: windows-latest
-            target: i686-pc-windows-msvc
-            lib_name: liblzma.dll
-            output_dir: windows-x86
+            triplet: x86-windows
 
           - platform: macos-arm64
             os: macos-latest
-            target: aarch64-apple-darwin
-            lib_name: liblzma.dylib
-            output_dir: osx-arm64
+            triplet: arm64-osx
+
+          - platform: macos-x64
+            os: macos-latest
+            triplet: x64-osx
 
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Install VCPkg
+
+      - name: Install vcpkg
         uses: microsoft/vcpkg-action@v2
         with:
-          target: ${{ matrix.target }}
-      
-      # - name: Install .NET SDK
-      #   uses: actions/setup-dotnet@v4
-      #   with:
-      #     dotnet-version: '8.0.x'
-      
-      - name: Build liblzma Library
+          # optional but recommended (pins vcpkg for reproducible builds)
+          # vcpkgGitCommitId: "<a known good commit sha>"
+          triplet: ${{ matrix.triplet }}
+
+      - name: Install dependencies
         shell: bash
         run: |
-          vcpkg install liblzma --no-binarycaching
+          vcpkg install liblzma:${{ matrix.triplet }} --no-binarycaching
       
       # - name: Copy Library
       #   shell: bash
