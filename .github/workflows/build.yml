@@ -71,9 +71,9 @@ jobs:
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: |
-            - 8.0.x
-            - 9.0.x
-            - 10.0.x
+            8.0.x
+            9.0.x
+            10.0.x
 
       - name: Build lzma Library
         shell: bash
@@ -110,42 +110,42 @@ jobs:
   #       uses: actions/setup-dotnet@v5
   #       with:
   #         dotnet-version: |
-  #           - 8.0.x
-  #           - 9.0.x
-  #           - 10.0.x
+  #           8.0.x
+  #           9.0.x
+  #           10.0.x
       
   #     - name: Download Linux Library
-  #       uses: actions/download-artifact@v4
+  #       uses: actions/download-artifact@v8
   #       with:
   #         name: native-lib-linux-x64
   #         path: ZCS.XZ/ZCS.XZ/runtimes/linux-x64/native
 
   #     - name: Download Linux ARM64 Library
-  #       uses: actions/download-artifact@v4
+  #       uses: actions/download-artifact@v8
   #       with:
   #         name: native-lib-linux-arm64
   #         path: ZCS.XZ/ZCS.XZ/runtimes/linux-arm64/native
 
   #     - name: Download Windows x64 Library
-  #       uses: actions/download-artifact@v4
+  #       uses: actions/download-artifact@v8
   #       with:
   #         name: native-lib-windows-x64
   #         path: ZCS.XZ/ZCS.XZ/runtimes/win-x64/native
 
   #     - name: Download Windows ARM64 Library
-  #       uses: actions/download-artifact@v4
+  #       uses: actions/download-artifact@v8
   #       with:
   #         name: native-lib-windows-arm64
   #         path: ZCS.XZ/ZCS.XZ/runtimes/win-arm64/native
 
   #     - name: Download macOS x64 Library
-  #       uses: actions/download-artifact@v4
+  #       uses: actions/download-artifact@v8
   #       with:
   #         name: native-lib-macos-x64
   #         path: ZCS.XZ/ZCS.XZ/runtimes/osx-x64/native
 
   #     - name: Download macOS ARM64 Library
-  #       uses: actions/download-artifact@v4
+  #       uses: actions/download-artifact@v8
   #       with:
   #         name: native-lib-macos-arm64
   #         path: ZCS.XZ/ZCS.XZ/runtimes/osx-arm64/native
