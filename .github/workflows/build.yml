@@ -7,24 +7,17 @@ on:
     branches: [ main ]
   release:
     types: [ published ]
-      
-permissions:
-  contents: write
-  packages: write
+     
 
 jobs:
   build-liblzma:
     strategy:
       matrix:
-        platform: [linux-x64, linux-x86, windows-x64, windows-x86, macos-arm64, macos-x64]
+        platform: [linux-x64, windows-x64, windows-x86, macos-arm64, macos-x64]
         include:
           - platform: linux-x64
             os: ubuntu-latest
             triplet: x64-linux
-
-          - platform: linux-x86
-            os: ubuntu-latest
-            triplet: x86-linux
 
           - platform: windows-x64
             os: windows-latest
