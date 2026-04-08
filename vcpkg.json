@@ -1,8 +1,13 @@
 {
+  "name": "dependency-bundle",
+  "version": "1.0.0",
+  "dependencies": [
+    "liblzma"
+  ],
   "overrides": [
     {
       "name": "liblzma",
-      "version": "5.8.2s",
+      "version": "5.8.2",
       "features": ["tools"]
     }
   ]
