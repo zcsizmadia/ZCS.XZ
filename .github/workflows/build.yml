@@ -20,31 +20,37 @@ jobs:
             os: ubuntu-latest
             triplet: x64-linux-dynamic
             lib_file: lib/liblzma.so
+            exe_file: tools/liblzma/xz
 
           - platform: linux-arm64
             os: ubuntu-24.04-arm
             triplet: arm64-linux-dynamic
             lib_file: lib/liblzma.so
+            exe_file: tools/liblzma/xz
 
           - platform: windows-x64
             os: windows-latest
             triplet: x64-windows
             lib_file: bin/liblzma.dll
+            exe_file: tools/liblzma/xz.exe
 
           - platform: windows-arm64
             os: windows-11-arm
             triplet: arm64-windows
             lib_file: bin/liblzma.dll
+            exe_file: tools/liblzma/xz.exe
 
           - platform: macos-x64
             os: macos-latest
             triplet: x64-osx-dynamic
             lib_file: lib/liblzma.dylib
+            exe_file: tools/liblzma/xz
 
           - platform: macos-arm64
             os: macos-latest
             triplet: arm64-osx-dynamic
             lib_file: lib/liblzma.dylib
+            exe_file: tools/liblzma/xz
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -66,6 +72,7 @@ jobs:
         run: |
             mkdir -p ZCS.XZ/target/release/${{ matrix.triplet }}
             cp -L vcpkg/installed/${{ matrix.triplet }}/${{ matrix.lib_file }} ZCS.XZ/target/release/${{ matrix.triplet }}/
+            cp -L vcpkg/installed/${{ matrix.triplet }}/${{ matrix.exe_file }} ZCS.XZ/target/release/${{ matrix.triplet }}/
             ls -l ZCS.XZ/target/release/${{ matrix.triplet }}/
      
       - name: Upload Library
