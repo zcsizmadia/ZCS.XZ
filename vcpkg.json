@@ -7,8 +7,7 @@
   "overrides": [
     {
       "name": "liblzma",
-      "version": "5.8.2",
-      "features": ["tools"]
+      "version": "5.8.2"
     }
   ]
 }
