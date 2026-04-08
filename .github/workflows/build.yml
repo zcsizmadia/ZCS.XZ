@@ -43,7 +43,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install vcpkg
-        uses: microsoft/vcpkg-action@v2
+        uses: lukka/run-vcpkg@v11 # microsoft/vcpkg-action@v2
         with:
           # optional but recommended (pins vcpkg for reproducible builds)
           # vcpkgGitCommitId: "<a known good commit sha>"
