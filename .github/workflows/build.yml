@@ -39,25 +39,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install vcpkg
-        uses: lukka/run-vcpkg@v11 # microsoft/vcpkg-action@v2
-        with:
-          vcpkgGitCommitId: "81e3c888ef717a026eb57bb2f3cb0dbd30246271"
+      # - name: Install vcpkg
+      #   uses: lukka/run-vcpkg@v11 # microsoft/vcpkg-action@v2
+      #   with:
+      #     vcpkgGitCommitId: "81e3c888ef717a026eb57bb2f3cb0dbd30246271"
 
       - name: Install liblzma
         shell: bash
         run: |
-          #vcpkg install liblzma:${{ matrix.triplet }} #--no-binarycaching
-          git clone https://github.com/tukaani-project/xz.git
-          cd xz
-          ./configure --enable-shared
-          make
-      
+          vcpkg install liblzma --triplet=${{ matrix.triplet }}-dynamic #--no-binarycaching
+
       - name: Copy liblzma to Output Directory
         shell: bash
         run: |
-            find vcpkg 
-      # /installed/${{ matrix.triplet }}
+            find vcpkg/installed/${{ matrix.triplet }}
       #     mkdir -p ZCS.XZ/target/release/${{ matrix.triplet }}
       #     #cp hypertrie/target/${{ matrix.target }}/release/${{ matrix.lib_name }} ZCS.XZ/target/release/${{ matrix.output_dir }}/
       
