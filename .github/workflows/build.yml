@@ -39,10 +39,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # - name: Install vcpkg
-      #   uses: lukka/run-vcpkg@v11 # microsoft/vcpkg-action@v2
-      #   with:
-      #     vcpkgGitCommitId: "81e3c888ef717a026eb57bb2f3cb0dbd30246271"
+      - name: Install vcpkg
+        uses: lukka/run-vcpkg@v11 # microsoft/vcpkg-action@v2
+        with:
+          vcpkgGitCommitId: "81e3c888ef717a026eb57bb2f3cb0dbd30246271"
 
       - name: Install liblzma
         shell: bash
@@ -52,7 +52,7 @@ jobs:
       - name: Copy liblzma to Output Directory
         shell: bash
         run: |
-            find /usr/local/share/vcpkg/installed/${{ matrix.triplet }}
+            find vcpkg/installed/${{ matrix.triplet }}
       #     mkdir -p ZCS.XZ/target/release/${{ matrix.triplet }}
       #     #cp hypertrie/target/${{ matrix.target }}/release/${{ matrix.lib_name }} ZCS.XZ/target/release/${{ matrix.output_dir }}/
       
