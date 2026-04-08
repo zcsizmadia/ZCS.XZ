@@ -53,7 +53,7 @@ jobs:
         shell: bash
         run: |
             mkdir -p ZCS.XZ/target/release/${{ matrix.triplet }}
-            cp -L vcpkg/installed/${{ matrix.triplet }}-dynamic/lib/*.{so,dylib,dll} ZCS.XZ/target/release/${{ matrix.triplet }}/
+            cp -L vcpkg/installed/${{ matrix.triplet }}-dynamic/lib/*.{so,dylib,dll} ZCS.XZ/target/release/${{ matrix.triplet }}/ 2>/dev/null || true
             ls -l ZCS.XZ/target/release/${{ matrix.triplet }}/
      
       - name: Upload Library
