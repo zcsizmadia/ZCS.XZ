@@ -52,7 +52,8 @@ jobs:
       - name: Copy liblzma to Output Directory
         shell: bash
         run: |
-            find vcpkg/installed/${{ matrix.triplet }}
+            find vcpkg 
+      # /installed/${{ matrix.triplet }}
       #     mkdir -p ZCS.XZ/target/release/${{ matrix.triplet }}
       #     #cp hypertrie/target/${{ matrix.target }}/release/${{ matrix.lib_name }} ZCS.XZ/target/release/${{ matrix.output_dir }}/
       
