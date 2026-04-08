@@ -20,10 +20,10 @@ jobs:
             triplet: x64-linux
             lib_file: liblzma.so
 
-          # - platform: windows-x64
-          #   os: windows-latest
-          #   triplet: x64-windows
-          #   lib_file: liblzma.dll
+          - platform: windows-x64
+            os: windows-latest
+            triplet: x64-windows
+            lib_file: liblzma.dll
 
           # - platform: windows-x86
           #   os: windows-latest
@@ -85,11 +85,11 @@ jobs:
           name: native-lib-linux-x64
           path: ZCS.XZ/target/release/linux-x64
       
-  #     - name: Download Windows x64 Library
-  #       uses: actions/download-artifact@v4
-  #       with:
-  #         name: native-lib-windows-x64
-  #         path: ZCS.XZ/target/release/windows-x64
+      - name: Download Windows x64 Library
+        uses: actions/download-artifact@v4
+        with:
+          name: native-lib-windows-x64
+          path: ZCS.XZ/target/release/windows-x64
       
   #     - name: Download Windows x86 Library
   #       uses: actions/download-artifact@v4
@@ -105,5 +105,5 @@ jobs:
       - name: Build
         shell: bash
         run: |
-          ls -l ZCS.XZ/target/release/
+          ls -lR ZCS.XZ/target/release/
       
