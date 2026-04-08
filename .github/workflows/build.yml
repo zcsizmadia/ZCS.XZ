@@ -14,38 +14,37 @@ jobs:
     strategy:
       max-parallel: 1
       matrix:
-        #platform: [linux-x64, linux-arm64, windows-x64, windows-arm64, macos-x64, macos-arm64]
-        platform: [linux-x64]
+        platform: [linux-x64, linux-arm64, windows-x64, windows-arm64, macos-x64, macos-arm64]
         include:
           - platform: linux-x64
             os: ubuntu-latest
             triplet: x64-linux-dynamic
             lib_file: lib/liblzma.so
 
-          # - platform: linux-arm64
-          #   os: ubuntu-24.04-arm
-          #   triplet: arm64-linux-dynamic
-          #   lib_file: lib/liblzma.so
+          - platform: linux-arm64
+            os: ubuntu-24.04-arm
+            triplet: arm64-linux-dynamic
+            lib_file: lib/liblzma.so
 
-          # - platform: windows-x64
-          #   os: windows-latest
-          #   triplet: x64-windows
-          #   lib_file: bin/liblzma.dll
+          - platform: windows-x64
+            os: windows-latest
+            triplet: x64-windows
+            lib_file: bin/liblzma.dll
 
-          # - platform: windows-arm64
-          #   os: windows-11-arm
-          #   triplet: arm64-windows
-          #   lib_file: bin/liblzma.dll
+          - platform: windows-arm64
+            os: windows-11-arm
+            triplet: arm64-windows
+            lib_file: bin/liblzma.dll
 
-          # - platform: macos-x64
-          #   os: macos-latest
-          #   triplet: x64-osx-dynamic
-          #   lib_file: lib/liblzma.dylib
+          - platform: macos-x64
+            os: macos-latest
+            triplet: x64-osx-dynamic
+            lib_file: lib/liblzma.dylib
 
-          # - platform: macos-arm64
-          #   os: macos-latest
-          #   triplet: arm64-osx-dynamic
-          #   lib_file: lib/liblzma.dylib
+          - platform: macos-arm64
+            os: macos-latest
+            triplet: arm64-osx-dynamic
+            lib_file: lib/liblzma.dylib
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -56,13 +55,13 @@ jobs:
         with:
           vcpkgGitCommitId: "81e3c888ef717a026eb57bb2f3cb0dbd30246271"
 
-      - name: Build liblzma
+      - name: Build Library
         shell: bash
         run: |
-          vcpkg install liblzma[tools]:${{ matrix.triplet }} #--triplet=${{ matrix.triplet }}
+          vcpkg install liblzma[tools]:${{ matrix.triplet }}
           find vcpkg/installed/${{ matrix.triplet }}
 
-      - name: Copy liblzma to Output Directory
+      - name: Copy to Output Directory
         shell: bash
         run: |
             mkdir -p ZCS.XZ/target/release/${{ matrix.triplet }}
