@@ -59,8 +59,7 @@ jobs:
       - name: Build liblzma
         shell: bash
         run: |
-          #vcpkg install liblzma --triplet=${{ matrix.triplet }}
-          vcpkg install --triplet=${{ matrix.triplet }}
+          vcpkg install liblzma[tools] --triplet=${{ matrix.triplet }} -x-
           find vcpkg/installed/${{ matrix.triplet }}
 
       - name: Copy liblzma to Output Directory
