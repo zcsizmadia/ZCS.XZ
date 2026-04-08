@@ -45,9 +45,7 @@ jobs:
       - name: Install vcpkg
         uses: lukka/run-vcpkg@v11 # microsoft/vcpkg-action@v2
         with:
-          # optional but recommended (pins vcpkg for reproducible builds)
-          # vcpkgGitCommitId: "<a known good commit sha>"
-          triplet: ${{ matrix.triplet }}
+          vcpkgGitCommitId: "81e3c888ef717a026eb57bb2f3cb0dbd30246271"
 
       - name: Install dependencies
         shell: bash
