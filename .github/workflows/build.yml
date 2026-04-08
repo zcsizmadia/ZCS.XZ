@@ -88,10 +88,12 @@ jobs:
             cp -L vcpkg/installed/${{ matrix.triplet }}/${{ matrix.lib_file }} ZCS.XZ/ZCS.XZ/runtimes/${{ matrix.runtime_arch }}/native/
             cp -L vcpkg/installed/${{ matrix.triplet }}/${{ matrix.exe_file }} ZCS.XZ/ZCS.XZ/runtimes/${{ matrix.runtime_arch }}/native/
 
-      - name: Build Project
+      - name: Build and Test Project
         shell: bash
         run: |
-          dotnet build ZCS.XZ/ZCS.XZ.csproj -c Release
+          dotnet restore
+          dotnet build -c Release --no-restore
+          dotnet test -c Release --no-build --verbosity normal            
 
       - name: Upload Library
         uses: actions/upload-artifact@v4
