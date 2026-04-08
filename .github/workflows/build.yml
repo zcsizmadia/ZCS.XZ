@@ -17,7 +17,7 @@ jobs:
         include:
           - platform: linux-x64
             os: ubuntu-latest
-            triplet: x64-linux
+            triplet: x64-linux-dynamic
             lib_file: liblzma.so
 
           - platform: windows-x64
@@ -32,12 +32,12 @@ jobs:
 
           # - platform: macos-arm64
           #   os: macos-latest
-          #   triplet: arm64-osx
+          #   triplet: arm64-osx-dynamic
           #   lib_file: liblzma.dylib
 
           # - platform: macos-x64
           #   os: macos-latest
-          #   triplet: x64-osx
+          #   triplet: x64-osx-dynamic
           #   lib_file: liblzma.dylib
 
     runs-on: ${{ matrix.os }}
@@ -52,13 +52,14 @@ jobs:
       - name: Install liblzma
         shell: bash
         run: |
-          vcpkg install liblzma --triplet=${{ matrix.triplet }}-dynamic
+          vcpkg install liblzma --triplet=${{ matrix.triplet }}
+          find vcpkg/installed/${{ matrix.triplet }}
 
       - name: Copy liblzma to Output Directory
         shell: bash
         run: |
             mkdir -p ZCS.XZ/target/release/${{ matrix.triplet }}
-            cp -L vcpkg/installed/${{ matrix.triplet }}-dynamic/lib/${{ matrix.lib_file }} ZCS.XZ/target/release/${{ matrix.triplet }}/
+            cp -L vcpkg/installed/${{ matrix.triplet }}/lib/${{ matrix.lib_file }} ZCS.XZ/target/release/${{ matrix.triplet }}/
             ls -l ZCS.XZ/target/release/${{ matrix.triplet }}/
      
       - name: Upload Library
