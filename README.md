@@ -67,7 +67,7 @@ using ZCS.XZ;
 
 var options = new XZCompressOptions
 {
-    Level = XZCompressionLevel.Level9,  // Maximum compression
+    Level = XZCompressionLevel.Maximum, // Maximum compression
     Extreme = true,                     // Marginally better ratio, slower
     Threads = 0,                        // Auto-detect thread count
     BufferSize = 131072,                // 128 KB internal buffer
@@ -137,8 +137,8 @@ A **read-only** stream that decompresses `.xz` (or legacy `.lzma`) data from an 
 | `Fastest` | 1 | Fastest compression. |
 | `Level2`–`Level5` | 2–5 | Increasing compression ratio. |
 | `Default` | 6 | Recommended balance of speed and ratio. |
-| `Level7`–`Level9` | 7–9 | Higher ratio, more CPU and memory. |
-| `Maximum` | 9 | Alias for `Level9`. |
+| `Level7`–`Level8` | 7–8 | Higher ratio, more CPU and memory. |
+| `Maximum` | 9 | Highest ratio, most CPU and memory. |
 
 ### `XZException`
 

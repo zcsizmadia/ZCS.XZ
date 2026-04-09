@@ -41,9 +41,6 @@ public enum XZCompressionLevel
     /// <summary>Level 8 — very high compression. Significantly higher memory usage.</summary>
     Level8 = 8,
 
-    /// <summary>Level 9 — maximum compression ratio. Slowest and most memory-intensive.</summary>
-    Level9 = 9,
-
-    /// <summary>Alias for <see cref="Level9"/> — the highest available compression level.</summary>
-    Maximum = Level9,
+    /// <summary>Maximum — maximum compression ratio. Slowest and most memory-intensive.</summary>
+    Maximum = 9
 }
