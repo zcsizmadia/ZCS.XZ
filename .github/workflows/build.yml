@@ -60,7 +60,7 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install vcpkg
         uses: lukka/run-vcpkg@v11
@@ -109,7 +109,7 @@ jobs:
     runs-on: ubuntu-latest
     if: always() && needs.build-liblzma.result == 'success'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install .NET SDKs
         uses: actions/setup-dotnet@v4
@@ -145,7 +145,7 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install .NET SDKs
         uses: actions/setup-dotnet@v4
@@ -178,7 +178,7 @@ jobs:
     runs-on: ubuntu-latest
     if: always() && needs.validate-nupkg.result == 'success' && github.event_name == 'release'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Download NuGet package artifact
         uses: actions/download-artifact@v4
