@@ -68,7 +68,7 @@ jobs:
           vcpkgGitCommitId: "81e3c888ef717a026eb57bb2f3cb0dbd30246271"
 
       - name: Install .NET SDKs
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: |
             8.0.x
@@ -112,7 +112,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Install .NET SDKs
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: |
             8.0.x
@@ -148,7 +148,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Install .NET SDKs
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: |
             8.0.x
