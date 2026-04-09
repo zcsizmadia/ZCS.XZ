@@ -85,6 +85,14 @@ jobs:
           mkdir -p ZCS.XZ/runtimes/${{ matrix.runtime_arch }}/native
           cp -L vcpkg/installed/${{ matrix.triplet }}/${{ matrix.lib_file }} ZCS.XZ/runtimes/${{ matrix.runtime_arch }}/native/
 
+      - name: Check if xz installed (needed only for testing)
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" == "macOS" ]; then
+            brew install xz
+          fi
+          xz --version
+
       - name: Build and test
         shell: bash
         run: |
