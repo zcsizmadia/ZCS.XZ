@@ -13,7 +13,7 @@
 	<PropertyGroup>
 		<Authors>Zoltan Csizmadia</Authors>
 		<Owners>Zoltan Csizmadia</Owners>
-		<PackageVersion>$(LibLzmaVersion)</PackageVersion>
+		<PackageVersion>$(Version)</PackageVersion>
 		<PackageLicenseFile>LICENSE</PackageLicenseFile>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
