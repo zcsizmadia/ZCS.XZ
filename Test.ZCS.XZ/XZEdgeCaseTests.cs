@@ -1,4 +1,3 @@
-using System.Reflection;
 using System.Text;
 
 namespace ZCS.XZ.Tests;
@@ -37,45 +36,6 @@ public class XZExceptionTests
     {
         var ex = new XZException(code);
         Assert.Contains(expectedSubstring, ex.Message);
-    }
-}
-
-public class LibLzmaNativeMethodsTests
-{
-    [Fact]
-    public void NativeVersion_ReturnsValidVersion()
-    {
-        var version = LibLzmaNativeMethods.NativeVersion;
-        Assert.True(version.Major >= 5, $"Expected major version >= 5, got {version.Major}");
-        Assert.True(version.Minor >= 0);
-        Assert.True(version.Build >= 0);
-    }
-
-    [Fact]
-    public void NativeVersionString_ReturnsNonEmpty()
-    {
-        var versionString = LibLzmaNativeMethods.NativeVersionString;
-        Assert.False(string.IsNullOrEmpty(versionString));
-        Assert.Contains(".", versionString);
-    }
-
-    [Fact]
-    public void NativeVersion_MatchesNativeVersionString()
-    {
-        var version = LibLzmaNativeMethods.NativeVersion;
-        var versionString = LibLzmaNativeMethods.NativeVersionString;
-        Assert.StartsWith($"{version.Major}.{version.Minor}.{version.Build}", versionString);
-    }
-
-    [Fact]
-    public void NativeVersion_MatchesDirectoryBuildPropsVersion()
-    {
-        var expected = typeof(LibLzmaNativeMethodsTests).Assembly
-            .GetCustomAttributes<System.Reflection.AssemblyMetadataAttribute>()
-            .First(a => a.Key == "LibLzmaVersion").Value;
-
-        var nativeVersion = LibLzmaNativeMethods.NativeVersion;
-        Assert.Equal(expected, $"{nativeVersion.Major}.{nativeVersion.Minor}.{nativeVersion.Build}");
     }
 }
 

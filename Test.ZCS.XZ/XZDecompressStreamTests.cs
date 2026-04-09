@@ -1,6 +1,3 @@
-using System.Diagnostics;
-using System.Text;
-
 namespace ZCS.XZ.Tests;
 
 public class XZDecompressStreamTests

@@ -1,3 +1,6 @@
+NOTE: These test files were copied from the original XZ Utils source code
+by Lasse Collin and Jia Tan (Tukaani Project), available at:
+https://github.com/tukaani-project/xz/tree/master/tests/files
 
 .xz, .lzma, and .lz Test Files
 ------------------------------
