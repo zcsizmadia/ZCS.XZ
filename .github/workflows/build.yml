@@ -2,112 +2,134 @@ name: Build and Release
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
   release:
     types: [ published ]
-      
-permissions:
-  contents: write
-  packages: write
-
 
 jobs:
   build-liblzma:
     strategy:
+      max-parallel: 1
       matrix:
-        platform: [linux-x64, windows-x64, windows-x86, macos-arm64]
+        platform: [linux-x64, linux-arm64, windows-x64, windows-arm64, macos-x64, macos-arm64]
         include:
           - platform: linux-x64
             os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            lib_name: liblzma.so
-            output_dir: linux-x64
+            triplet: x64-linux-dynamic
+            lib_file: lib/liblzma.so
+            exe_file: tools/liblzma/xz
+            runtime_arch: linux-x64
+
+          - platform: linux-arm64
+            os: ubuntu-24.04-arm
+            triplet: arm64-linux-dynamic
+            lib_file: lib/liblzma.so
+            exe_file: tools/liblzma/xz
+            runtime_arch: linux-arm64
 
           - platform: windows-x64
             os: windows-latest
-            target: x86_64-pc-windows-msvc
-            lib_name: liblzma.dll
-            output_dir: windows-x64
+            triplet: x64-windows
+            lib_file: bin/liblzma.dll
+            exe_file: tools/liblzma/xz.exe
+            runtime_arch: win-x64
 
-          - platform: windows-x86
-            os: windows-latest
-            target: i686-pc-windows-msvc
-            lib_name: liblzma.dll
-            output_dir: windows-x86
+          - platform: windows-arm64
+            os: windows-11-arm
+            triplet: arm64-windows
+            lib_file: bin/liblzma.dll
+            exe_file: tools/liblzma/xz.exe
+            runtime_arch: win-arm64
+
+          - platform: macos-x64
+            os: macos-latest
+            triplet: x64-osx-dynamic
+            lib_file: lib/liblzma.dylib
+            exe_file: tools/liblzma/xz
+            runtime_arch: osx-x64
 
           - platform: macos-arm64
             os: macos-latest
-            target: aarch64-apple-darwin
-            lib_name: liblzma.dylib
-            output_dir: osx-arm64
+            triplet: arm64-osx-dynamic
+            lib_file: lib/liblzma.dylib
+            exe_file: tools/liblzma/xz
+            runtime_arch: osx-arm64
 
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Install VCPkg
-        uses: microsoft/vcpkg-action@v2
+
+      - name: Install vcpkg
+        uses: lukka/run-vcpkg@v11
         with:
-          target: ${{ matrix.target }}
-      
-      # - name: Install .NET SDK
-      #   uses: actions/setup-dotnet@v4
-      #   with:
-      #     dotnet-version: '8.0.x'
-      
-      - name: Build liblzma Library
+          vcpkgGitCommitId: "81e3c888ef717a026eb57bb2f3cb0dbd30246271"
+
+      - name: Install .NET SDKs
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
+
+      - name: Build liblzma
         shell: bash
         run: |
-          vcpkg install liblzma --no-binarycaching
-      
-      # - name: Copy Library
-      #   shell: bash
-      #   run: |
-      #     mkdir -p ZCS.XZ/target/release/${{ matrix.output_dir }}
-      #     #cp hypertrie/target/${{ matrix.target }}/release/${{ matrix.lib_name }} ZCS.XZ/target/release/${{ matrix.output_dir }}/
-      
-      # - name: Upload Library
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: native-lib-${{ matrix.platform }}
-      #     path: ZCS.XZ/target/release/${{ matrix.output_dir }}
+          vcpkg install liblzma:${{ matrix.triplet }}
 
-  # build-nuget:
-  #   needs: [build-liblzma]
-  #   runs-on: ubuntu-latest
-  #   if: always() && needs.build-liblzma.result == 'success'
-  #   steps:
-  #     - uses: actions/checkout@v4
-      
-  #     - name: Install .NET SDK
-  #       uses: actions/setup-dotnet@v4
-  #       with:
-  #         dotnet-version: '10.0.x'
-      
-  #     - name: Download Linux Library
-  #       uses: actions/download-artifact@v4
-  #       with:
-  #         name: native-lib-linux-x64
-  #         path: ZCS.XZ/target/release/linux-x64
-      
-  #     - name: Download Windows x64 Library
-  #       uses: actions/download-artifact@v4
-  #       with:
-  #         name: native-lib-windows-x64
-  #         path: ZCS.XZ/target/release/windows-x64
-      
-  #     - name: Download Windows x86 Library
-  #       uses: actions/download-artifact@v4
-  #       with:
-  #         name: native-lib-windows-x86
-  #         path: ZCS.XZ/target/release/windows-x86
-      
-  #     - name: Download macOS ARM64 Library
-  #       uses: actions/download-artifact@v4
-  #       with:
-  #         name: native-lib-macos-arm64
-  #         path: ZCS.XZ/target/release/osx-arm64
-      
-      
+      - name: Copy to runtimes
+        shell: bash
+        run: |
+          mkdir -p ZCS.XZ/runtimes/${{ matrix.runtime_arch }}/native
+          cp -L vcpkg/installed/${{ matrix.triplet }}/${{ matrix.lib_file }} ZCS.XZ/runtimes/${{ matrix.runtime_arch }}/native/
+
+      - name: Build and test
+        shell: bash
+        run: |
+          dotnet restore
+          dotnet build -c Release --no-restore
+          dotnet test -c Release --no-build 
+
+      - name: Upload native library artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-lib-${{ matrix.platform }}
+          path: ZCS.XZ/runtimes
+
+  build-nuget:
+    needs: [build-liblzma]
+    runs-on: ubuntu-latest
+    if: always() && needs.build-liblzma.result == 'success'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install .NET SDKs
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
+
+      - name: Download all native library artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: native-lib-*
+          path: ZCS.XZ/runtimes
+          merge-multiple: true
+
+      - name: Pack NuGet package
+        run: dotnet pack ZCS.XZ/ZCS.XZ.csproj -c Release -o nupkg
+
+      - name: Upload NuGet package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-package
+          path: nupkg/*.nupkg
+
+      # Publish to NuGet.org only on release events
+      - name: Publish to NuGet.org
+        if: github.event_name == 'release'
+        run: dotnet nuget push nupkg/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate

@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/Solution Files/">
+    <File Path=".gitignore" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="LICENSE" />
+    <File Path="README.md" />
+  </Folder>
+  <Project Path="Test.ZCS.XZ/Test.ZCS.XZ.csproj" />
+  <Project Path="ZCS.XZ/ZCS.XZ.csproj" />
+</Solution>
