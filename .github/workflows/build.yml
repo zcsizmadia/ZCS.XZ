@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       #max-parallel: 1
-      matrix:
+      matrix: &platforms_matrix
         platform: [linux-x64, linux-arm64, windows-x64, windows-arm64, macos-x64, macos-arm64]
         include:
           - platform: linux-x64
@@ -104,7 +104,7 @@ jobs:
           name: native-lib-${{ matrix.platform }}
           path: ZCS.XZ/runtimes
 
-  build-nuget:
+  build-nupkg:
     needs: [build-liblzma]
     runs-on: ubuntu-latest
     if: always() && needs.build-liblzma.result == 'success'
@@ -135,6 +135,30 @@ jobs:
           name: nuget-package
           path: nupkgs/*.nupkg
 
+  validate-nupkg:
+    strategy:
+      fail-fast: false
+      #max-parallel: 1
+      matrix: *platforms_matrix
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install .NET SDKs
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
+
+      - name: Download NuGet package artifact
+        uses: actions/download-artifact@v4
+        with:
+          pattern: nuget-package
+          path: nupkgs
+
       - name: Validate NuGet package
         shell: bash
         run: |
@@ -146,6 +170,19 @@ jobs:
           dotnet run -c Release --no-build -f net8.0
           dotnet run -c Release --no-build -f net9.0
           dotnet run -c Release --no-build -f net10.0
+
+  publish-nupkg:
+    needs: [validate-nupkg]
+    runs-on: ubuntu-latest
+    if: always() && needs.validate-nupkg.result == 'success' && github.event_name == 'release'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download NuGet package artifact
+        uses: actions/download-artifact@v4
+        with:
+          pattern: nuget-package
+          path: nupkgs
 
       # Publish to NuGet.org only on release events
       - name: Publish to NuGet.org
