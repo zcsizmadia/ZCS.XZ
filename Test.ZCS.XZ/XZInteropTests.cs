@@ -16,11 +16,6 @@ public class XZInteropTests
     {
         foreach(var level in Enum.GetValues<XZCompressionLevel>())
         {
-            // Maximum is just an alias for the highest level, so we only need to test it once.
-            if (level == XZCompressionLevel.Maximum)
-            {
-                continue;
-            }
             yield return new object[] { (int)level, false };
             yield return new object[] { (int)level, true };
         }
