@@ -17,43 +17,54 @@ jobs:
         include:
           - platform: linux-x64
             os: ubuntu-latest
-            cmake_args: ""
-            cmake_lib_file: "lib/liblzma.so"
+            triplet: x64-linux-dynamic
+            lib_file: lib/liblzma.so
+            exe_file: tools/liblzma/xz
             runtime_arch: linux-x64
 
           - platform: linux-arm64
             os: ubuntu-24.04-arm
-            cmake_args: ""
-            cmake_lib_file: "lib/liblzma.so"
+            triplet: arm64-linux-dynamic
+            lib_file: lib/liblzma.so
+            exe_file: tools/liblzma/xz
             runtime_arch: linux-arm64
 
           - platform: windows-x64
             os: windows-latest
-            cmake_args: "-A x64"
-            cmake_lib_file: "bin/liblzma.dll"
+            triplet: x64-windows
+            lib_file: bin/liblzma.dll
+            exe_file: tools/liblzma/xz.exe
             runtime_arch: win-x64
 
           - platform: windows-arm64
             os: windows-11-arm
-            cmake_args: "-A ARM64"
-            cmake_lib_file: "bin/liblzma.dll"
+            triplet: arm64-windows
+            lib_file: bin/liblzma.dll
+            exe_file: tools/liblzma/xz.exe
             runtime_arch: win-arm64
 
           - platform: macos-x64
             os: macos-latest
-            cmake_args: "-DCMAKE_OSX_ARCHITECTURES=x86_64"
-            cmake_lib_file: "lib/liblzma.dylib"
+            triplet: x64-osx-dynamic
+            lib_file: lib/liblzma.dylib
+            exe_file: tools/liblzma/xz
             runtime_arch: osx-x64
 
           - platform: macos-arm64
             os: macos-latest
-            cmake_args: "-DCMAKE_OSX_ARCHITECTURES=arm64"
-            cmake_lib_file: "lib/liblzma.dylib"
+            triplet: arm64-osx-dynamic
+            lib_file: lib/liblzma.dylib
+            exe_file: tools/liblzma/xz
             runtime_arch: osx-arm64
 
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: "81e3c888ef717a026eb57bb2f3cb0dbd30246271"
 
       - name: Install .NET SDKs
         uses: actions/setup-dotnet@v4
@@ -66,24 +77,13 @@ jobs:
       - name: Build liblzma
         shell: bash
         run: |
-          XZ_VERSION=$(sed -n 's/.*<LibLzmaVersion>\(.*\)<\/LibLzmaVersion>.*/\1/p' Directory.Build.props | tr -d '[:space:]')
-          XZ_URL="https://github.com/tukaani-project/xz/releases/download/v$XZ_VERSION/xz-$XZ_VERSION.tar.gz"
-          echo "Building liblzma version $XZ_VERSION from $XZ_URL"
-          curl -sL $XZ_URL | tar xz
-          mkdir xz-build xz-install
-          cmake -S xz-$XZ_VERSION -B xz-build \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX=xz-install \
-            -DBUILD_SHARED_LIBS=ON ${{ matrix.cmake_args }}
-          cmake --build xz-build --config Release --target lzma
-          cmake --install xz-build --prefix xz-install --config Release --target lzma
-          find xz-install || true
+          vcpkg install liblzma:${{ matrix.triplet }}
 
-      - name: Copy libzma to runtimes
+      - name: Copy to runtimes
         shell: bash
         run: |
           mkdir -p ZCS.XZ/runtimes/${{ matrix.runtime_arch }}/native
-          cp -L xz-install/${{ matrix.cmake_lib_file }} ZCS.XZ/runtimes/${{ matrix.runtime_arch }}/native/
+          cp -L vcpkg/installed/${{ matrix.triplet }}/${{ matrix.lib_file }} ZCS.XZ/runtimes/${{ matrix.runtime_arch }}/native/
 
       - name: Build and test
         shell: bash
