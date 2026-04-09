@@ -73,18 +73,25 @@ jobs:
         shell: bash
         run: |
           XZ_VERSION=$(sed -n 's/.*<LibLzmaVersion>\(.*\)<\/LibLzmaVersion>.*/\1/p' Directory.Build.props | tr -d '[:space:]')
-          curl -sL https://github.com/tukaani-project/xz/releases/download/v$XZ_VERSION/xz-$XZ_VERSION.tar.gz | tar xz
-          mkdir xz-build
-          cmake -S xz-$XZ_VERSION -B xz-build -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON ${{ matrix.cmake_args }}
+          XZ_URL="https://github.com/tukaani-project/xz/releases/download/v$XZ_VERSION/xz-$XZ_VERSION.tar.gz"
+          echo "Building liblzma version $XZ_VERSION from $XZ_URL"
+          curl -sL $XZ_URL | tar xz
+          mkdir xz-build xz-install
+          cmake -S xz-$XZ_VERSION -B xz-build \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/xz-install \
+              -DBUILD_SHARED_LIBS=ON ${{ matrix.cmake_args }}
           cmake --build xz-build --config Release
-          ls -l xz-build
-          xz-build/xz --version
+          cmake --install xz-build --config Release
+        
+          ls -lR xz-install
+          xz-install/xz --version
 
       - name: Copy to runtimes
         shell: bash
         run: |
           mkdir -p ZCS.XZ/runtimes/${{ matrix.runtime_arch }}/native
-          cp -L xz-build/${{ matrix.lib_file }} ZCS.XZ/runtimes/${{ matrix.runtime_arch }}/native/
+          cp -L xz-install/${{ matrix.lib_file }} ZCS.XZ/runtimes/${{ matrix.runtime_arch }}/native/
 
       - name: Build and test
         shell: bash
