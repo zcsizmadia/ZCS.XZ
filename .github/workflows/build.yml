@@ -73,10 +73,10 @@ jobs:
           mkdir xz-build xz-install
           cmake -S xz-$XZ_VERSION -B xz-build \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX=${{ github.workspace }}/xz-install \
+            -DCMAKE_INSTALL_PREFIX=xz-install \
             -DBUILD_SHARED_LIBS=ON ${{ matrix.cmake_args }}
           cmake --build xz-build --config Release
-          cmake --install xz-build --prefix ${{ github.workspace }}/xz-install --config Release
+          cmake --install xz-build --prefix xz-install --config Release
           find xz-install || true
 
       - name: Copy libzma to runtimes
