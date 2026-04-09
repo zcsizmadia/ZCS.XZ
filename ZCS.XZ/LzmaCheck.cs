@@ -1,8 +1,13 @@
 namespace ZCS.XZ;
 
 /// <summary>
-/// Integrity check type
+/// Specifies the integrity check type embedded in an .xz stream.
+/// The check is appended to each block and verified during decompression.
 /// </summary>
+/// <remarks>
+/// Not all check types are supported by all liblzma builds. CRC64 is the default
+/// used by <see cref="XZCompressStream"/> and is universally supported.
+/// </remarks>
 public enum LzmaCheck
 {
     /// <summary>

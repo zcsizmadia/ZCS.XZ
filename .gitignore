@@ -482,4 +482,5 @@ $RECYCLE.BIN/
 *.swp
 
 # Runtime native files
-runtimes/
+ZCS.XZ/runtimes/
+Test.ZCS.XZ/runtimes/

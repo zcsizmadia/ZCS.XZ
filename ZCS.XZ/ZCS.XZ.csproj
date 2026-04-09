@@ -1,10 +1,21 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>$(DefaultLibraryTargetFrameworks)</TargetFrameworks>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+	<TargetFrameworks>$(DefaultTargetFrameworks)</TargetFrameworks>
+	<RootNamespace>ZCS.XZ</RootNamespace>
+	<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+	<IsPackable>true</IsPackable>
+	<Description>High-performance .NET wrapper for liblzma providing XZ (LZMA2) compression and decompression via a standard Stream API.</Description>
   </PropertyGroup>
+
+  <!-- Include only native liblzma libraries in build output and NuGet package.
+	   xz executables (xz, xz.exe) are excluded — they are only used by the test project. -->
+  <ItemGroup>
+	<None Include="runtimes\**\native\liblzma.*">
+	  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  <Pack>true</Pack>
+	  <PackagePath>runtimes/%(RecursiveDir)%(Filename)%(Extension)</PackagePath>
+	</None>
+  </ItemGroup>
 
 </Project>
