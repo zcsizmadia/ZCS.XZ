@@ -30,13 +30,13 @@ jobs:
           - platform: windows-x64
             os: windows-latest
             cmake_args: "-A x64"
-            cmake_lib_file: "x64/liblzma.dll"
+            cmake_lib_file: "bin/liblzma.dll"
             runtime_arch: win-x64
 
           - platform: windows-arm64
             os: windows-11-arm
             cmake_args: "-A ARM64"
-            cmake_lib_file: "arm64/liblzma.dll"
+            cmake_lib_file: "bin/liblzma.dll"
             runtime_arch: win-arm64
 
           - platform: macos-x64
@@ -79,7 +79,7 @@ jobs:
           cmake --install xz-build --prefix ${{ github.workspace }}/xz-install --config Release
           find xz-install || true
 
-      - name: Copy to runtimes
+      - name: Copy libzma to runtimes
         shell: bash
         run: |
           mkdir -p ZCS.XZ/runtimes/${{ matrix.runtime_arch }}/native
