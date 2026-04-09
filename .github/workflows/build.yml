@@ -136,6 +136,8 @@ jobs:
           path: nupkgs/*.nupkg
 
   validate-nupkg:
+    needs: [build-nupkg]
+    if: always() && needs.build-nupkg.result == 'success'
     strategy:
       fail-fast: false
       #max-parallel: 1
