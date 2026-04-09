@@ -84,7 +84,7 @@ jobs:
           cmake --build xz-build --config Release
           cmake --install xz-build --config Release
         
-          ls -lR xz-install
+          find xz-install || true
           xz-install/bin/xz --version
 
       - name: Copy to runtimes
