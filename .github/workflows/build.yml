@@ -120,10 +120,6 @@ jobs:
           path: ZCS.XZ/runtimes
           merge-multiple: true
 
-      - name: List runtimes directory
-        shell: bash
-        run: ls -lR ZCS.XZ/runtimes
-
       - name: Pack NuGet package
         run: dotnet pack ZCS.XZ/ZCS.XZ.csproj -c Release -o nupkg
 

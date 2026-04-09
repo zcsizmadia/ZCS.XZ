@@ -336,4 +336,50 @@ public static class LibLzmaNativeMethods
     [DllImport(LibLzma, CallingConvention = CallingConvention.Cdecl)]
     internal static extern void lzma_end(
         ref LzmaStream strm);
+
+    /// <summary>
+    /// Returns the runtime version of liblzma as a single integer.
+    /// The format is <c>MAJOR * 10_000_000 + MINOR * 10_000 + PATCH * 10</c>.
+    /// For example, version 5.8.3 returns <c>50080030</c>.
+    /// </summary>
+    /// <returns>The encoded version number.</returns>
+    [DllImport(LibLzma, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern uint lzma_version_number();
+
+    /// <summary>
+    /// Returns the runtime version of liblzma as a null-terminated string (e.g., <c>"5.8.3"</c>).
+    /// </summary>
+    /// <returns>A pointer to the version string.</returns>
+    [DllImport(LibLzma, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern IntPtr lzma_version_string();
+
+    // ──────────────────────────────────────────────
+    // Public version API
+    // ──────────────────────────────────────────────
+
+    /// <summary>
+    /// Gets the runtime version of the loaded liblzma native library as a <see cref="Version"/> object.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// Version ver = LibLzmaNativeMethods.NativeVersion;
+    /// Console.WriteLine(ver); // e.g., "5.8.3"
+    /// </code>
+    /// </example>
+    public static Version NativeVersion
+    {
+        get
+        {
+            uint v = lzma_version_number();
+            int major = (int)(v / 10_000_000);
+            int minor = (int)(v / 10_000 % 1_000);
+            int patch = (int)(v / 10 % 1_000);
+            return new Version(major, minor, patch);
+        }
+    }
+
+    /// <summary>
+    /// Gets the runtime version of the loaded liblzma native library as a string (e.g., <c>"5.8.3"</c>).
+    /// </summary>
+    public static string NativeVersionString => Marshal.PtrToStringAnsi(lzma_version_string())!;
 }

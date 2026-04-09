@@ -16,6 +16,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>LibLzmaVersion</_Parameter1>
+      <_Parameter2>$(LibLzmaVersion)</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
 
