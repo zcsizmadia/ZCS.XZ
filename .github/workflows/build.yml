@@ -88,9 +88,6 @@ jobs:
       - name: Check if xz installed (needed only for testing)
         shell: bash
         run: |
-          if [ "$RUNNER_OS" == "macOS" ]; then
-            brew install xz
-          fi
           xz --version
 
       - name: Build and test
