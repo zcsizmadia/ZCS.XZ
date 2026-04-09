@@ -11,8 +11,9 @@ on:
 jobs:
   build-liblzma:
     strategy:
-      max-parallel: 1
-      matrix:
+      fail-fast: false
+      #max-parallel: 1
+      matrix: &platforms_matrix
         platform: [linux-x64, linux-arm64, windows-x64, windows-arm64, macos-x64, macos-arm64]
         include:
           - platform: linux-x64
@@ -85,6 +86,11 @@ jobs:
           mkdir -p ZCS.XZ/runtimes/${{ matrix.runtime_arch }}/native
           cp -L vcpkg/installed/${{ matrix.triplet }}/${{ matrix.lib_file }} ZCS.XZ/runtimes/${{ matrix.runtime_arch }}/native/
 
+      - name: Check if xz installed (needed only for testing)
+        shell: bash
+        run: |
+          xz --version
+
       - name: Build and test
         shell: bash
         run: |
@@ -98,7 +104,7 @@ jobs:
           name: native-lib-${{ matrix.platform }}
           path: ZCS.XZ/runtimes
 
-  build-nuget:
+  build-nupkg:
     needs: [build-liblzma]
     runs-on: ubuntu-latest
     if: always() && needs.build-liblzma.result == 'success'
@@ -121,15 +127,66 @@ jobs:
           merge-multiple: true
 
       - name: Pack NuGet package
-        run: dotnet pack ZCS.XZ/ZCS.XZ.csproj -c Release -o nupkg
+        run: dotnet pack ZCS.XZ/ZCS.XZ.csproj -c Release -o nupkgs
 
       - name: Upload NuGet package artifact
         uses: actions/upload-artifact@v4
         with:
           name: nuget-package
-          path: nupkg/*.nupkg
+          path: nupkgs/*.nupkg
+
+  validate-nupkg:
+    needs: [build-nupkg]
+    if: always() && needs.build-nupkg.result == 'success'
+    strategy:
+      fail-fast: false
+      #max-parallel: 1
+      matrix: *platforms_matrix
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install .NET SDKs
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
+
+      - name: Download NuGet package artifact
+        uses: actions/download-artifact@v4
+        with:
+          pattern: nuget-package
+          path: nupkgs
+
+      - name: Validate NuGet package
+        shell: bash
+        run: |
+          # We run the ValidateNupkg project, which references the built package,
+          # to ensure that it can be used correctly, before we push it to nuget.org.
+          cd ValidateNupkg
+          dotnet restore
+          dotnet build -c Release --no-restore
+          dotnet run -c Release --no-build -f net8.0
+          dotnet run -c Release --no-build -f net9.0
+          dotnet run -c Release --no-build -f net10.0
+
+  publish-nupkg:
+    needs: [validate-nupkg]
+    runs-on: ubuntu-latest
+    if: always() && needs.validate-nupkg.result == 'success' && github.event_name == 'release'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download NuGet package artifact
+        uses: actions/download-artifact@v4
+        with:
+          pattern: nuget-package
+          path: nupkgs
 
       # Publish to NuGet.org only on release events
       - name: Publish to NuGet.org
         if: github.event_name == 'release'
-        run: dotnet nuget push nupkg/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+        run: dotnet nuget push nupkgs/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate

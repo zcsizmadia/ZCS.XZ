@@ -1,0 +1,6 @@
+<!--
+This overrides using the version from Directory.Packages.props, which is the one we want to test against. 
+We can be sure that the package we built is the one being tested.
+-->
+<Project>
+</Project>
