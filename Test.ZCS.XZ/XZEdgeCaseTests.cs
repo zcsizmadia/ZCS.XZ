@@ -375,6 +375,60 @@ public class XZDecompressStreamEdgeCaseTests
     }
 
     [Fact]
+    public void GetPosition_ThrowsNotSupported()
+    {
+        var compressed = CompressData(Encoding.UTF8.GetBytes("x"));
+        using var ms = new MemoryStream(compressed);
+        using var xz = new XZDecompressStream(ms, leaveOpen: true);
+        Assert.Throws<NotSupportedException>(() => _ = xz.Position);
+    }
+
+    [Fact]
+    public void CanWrite_ReturnsFalse()
+    {
+        var compressed = CompressData(Encoding.UTF8.GetBytes("x"));
+        using var ms = new MemoryStream(compressed);
+        using var xz = new XZDecompressStream(ms, leaveOpen: true);
+        Assert.False(xz.CanWrite);
+    }
+
+    [Fact]
+    public void Length_ThrowsNotSupported()
+    {
+        var compressed = CompressData(Encoding.UTF8.GetBytes("x"));
+        using var ms = new MemoryStream(compressed);
+        using var xz = new XZDecompressStream(ms, leaveOpen: true);
+        Assert.Throws<NotSupportedException>(() => _ = xz.Length);
+    }
+
+    [Fact]
+    public void Write_ThrowsNotSupported()
+    {
+        var compressed = CompressData(Encoding.UTF8.GetBytes("x"));
+        using var ms = new MemoryStream(compressed);
+        using var xz = new XZDecompressStream(ms, leaveOpen: true);
+        Assert.Throws<NotSupportedException>(() => xz.Write(new byte[1], 0, 1));
+    }
+
+    [Fact]
+    public void Seek_ThrowsNotSupported()
+    {
+        var compressed = CompressData(Encoding.UTF8.GetBytes("x"));
+        using var ms = new MemoryStream(compressed);
+        using var xz = new XZDecompressStream(ms, leaveOpen: true);
+        Assert.Throws<NotSupportedException>(() => xz.Seek(0, SeekOrigin.Begin));
+    }
+
+    [Fact]
+    public void SetLength_ThrowsNotSupported()
+    {
+        var compressed = CompressData(Encoding.UTF8.GetBytes("x"));
+        using var ms = new MemoryStream(compressed);
+        using var xz = new XZDecompressStream(ms, leaveOpen: true);
+        Assert.Throws<NotSupportedException>(() => xz.SetLength(0));
+    }
+
+    [Fact]
     public void Read_SmallBuffer_DrainBufferedBytes()
     {
         // Compress data larger than 1 byte so the decoder produces multiple output bytes

@@ -158,6 +158,7 @@ coverage*.info
 # Visual Studio code coverage results
 *.coverage
 *.coveragexml
+CoverageReport/
 
 # NCrunch
 _NCrunch_*
@@ -483,4 +484,3 @@ $RECYCLE.BIN/
 
 # Runtime native files
 ZCS.XZ/runtimes/
-Test.ZCS.XZ/runtimes/

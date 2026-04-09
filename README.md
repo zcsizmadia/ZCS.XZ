@@ -162,7 +162,7 @@ The native liblzma binaries are bundled under the `runtimes/{rid}/native/` direc
 
 ### Prerequisites
 
-- [.NET 8 SDK](https://dotnet.microsoft.com/download) or later
+- [.NET 10 SDK](https://dotnet.microsoft.com/download) or later
 - Native liblzma binaries placed under `ZCS.XZ/runtimes/{rid}/native/`
 
 ### Build

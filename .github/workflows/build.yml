@@ -77,15 +77,13 @@ jobs:
       - name: Build liblzma
         shell: bash
         run: |
-          vcpkg install liblzma[tools]:${{ matrix.triplet }}
+          vcpkg install liblzma:${{ matrix.triplet }}
 
       - name: Copy to runtimes
         shell: bash
         run: |
           mkdir -p ZCS.XZ/runtimes/${{ matrix.runtime_arch }}/native
-          mkdir -p Test.ZCS.XZ/runtimes/${{ matrix.runtime_arch }}/native
           cp -L vcpkg/installed/${{ matrix.triplet }}/${{ matrix.lib_file }} ZCS.XZ/runtimes/${{ matrix.runtime_arch }}/native/
-          cp -L vcpkg/installed/${{ matrix.triplet }}/${{ matrix.exe_file }} Test.ZCS.XZ/runtimes/${{ matrix.runtime_arch }}/native/
 
       - name: Build and test
         shell: bash
