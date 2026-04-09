@@ -85,13 +85,13 @@ jobs:
           cmake --install xz-build --config Release
         
           ls -lR xz-install
-          xz-install/xz --version
+          xz-install/bin/xz --version
 
       - name: Copy to runtimes
         shell: bash
         run: |
           mkdir -p ZCS.XZ/runtimes/${{ matrix.runtime_arch }}/native
-          cp -L xz-install/${{ matrix.lib_file }} ZCS.XZ/runtimes/${{ matrix.runtime_arch }}/native/
+          cp -L xz-install/lib/${{ matrix.lib_file }} ZCS.XZ/runtimes/${{ matrix.runtime_arch }}/native/
 
       - name: Build and test
         shell: bash
