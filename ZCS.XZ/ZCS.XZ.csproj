@@ -1,59 +1,82 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-	<TargetFrameworks>$(DefaultTargetFrameworks)</TargetFrameworks>
-	<RootNamespace>ZCS.XZ</RootNamespace>
-	<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-	<IsPackable>true</IsPackable>
-	<Description>High-performance .NET wrapper for liblzma providing XZ (LZMA2) compression and decompression via a standard Stream API.</Description>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFrameworks>$(DefaultTargetFrameworks)</TargetFrameworks>
+		<RootNamespace>ZCS.XZ</RootNamespace>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<IsPackable>true</IsPackable>
+		<Description>High-performance .NET wrapper for liblzma providing XZ (LZMA2) compression and decompression via a standard Stream API.</Description>
+	</PropertyGroup>
 
-  <!-- Include native liblzma libraries in build output and NuGet package.
-	   Each platform built by build.yml is listed explicitly so that
-	   dotnet pack fails if any native library is missing. 
-	   Each item has Condition="Exists(...)" so local builds work with
-	   only the current platform's native library present. -->
-  <ItemGroup>
-	<None Include="runtimes\win-x64\native\liblzma.dll"
-		  Condition="Exists('runtimes\win-x64\native\liblzma.dll')"
-		  CopyToOutputDirectory="PreserveNewest" Pack="true"
-		  PackagePath="runtimes/win-x64/native/liblzma.dll" />
-	<None Include="runtimes\win-arm64\native\liblzma.dll"
-		  Condition="Exists('runtimes\win-arm64\native\liblzma.dll')"
-		  CopyToOutputDirectory="PreserveNewest" Pack="true"
-		  PackagePath="runtimes/win-arm64/native/liblzma.dll" />
-	<None Include="runtimes\linux-x64\native\liblzma.so"
-		  Condition="Exists('runtimes\linux-x64\native\liblzma.so')"
-		  CopyToOutputDirectory="PreserveNewest" Pack="true"
-		  PackagePath="runtimes/linux-x64/native/liblzma.so" />
-	<None Include="runtimes\linux-arm64\native\liblzma.so"
-		  Condition="Exists('runtimes\linux-arm64\native\liblzma.so')"
-		  CopyToOutputDirectory="PreserveNewest" Pack="true"
-		  PackagePath="runtimes/linux-arm64/native/liblzma.so" />
-	<None Include="runtimes\osx-x64\native\liblzma.dylib"
-		  Condition="Exists('runtimes\osx-x64\native\liblzma.dylib')"
-		  CopyToOutputDirectory="PreserveNewest" Pack="true"
-		  PackagePath="runtimes/osx-x64/native/liblzma.dylib" />
-	<None Include="runtimes\osx-arm64\native\liblzma.dylib"
-		  Condition="Exists('runtimes\osx-arm64\native\liblzma.dylib')"
-		  CopyToOutputDirectory="PreserveNewest" Pack="true"
-		  PackagePath="runtimes/osx-arm64/native/liblzma.dylib" />
-  </ItemGroup>
+	<ItemGroup>
+		<None Include="$(MSBuildThisFileDirectory)\LICENSE" Pack="true" PackagePath="" />
+		<None Include="$(MSBuildThisFileDirectory)\README.md" Pack="true" PackagePath="" />
+	</ItemGroup>
+	
+	<!--
+	Include native liblzma libraries in build output and NuGet package.
+	Each platform built by build.yml is listed explicitly so that
+	dotnet pack fails if any native library is missing. 
+	Each item has Condition="Exists(...)" so local builds work with
+	only the current platform's native library present.
+	-->
+	<ItemGroup>
+		<None Include="runtimes/win-x64/native/liblzma.dll"
+			Condition="Exists('runtimes/win-x64/native/liblzma.dll')"
+			CopyToOutputDirectory="PreserveNewest"
+			Pack="true"
+			PackagePath="runtimes/win-x64/native/liblzma.dll" />
 
-  <!-- Validate all native libraries are present before packing. -->
-  <Target Name="ValidateNativeLibraries" BeforeTargets="GenerateNuspec">
-	<Error Condition="!Exists('runtimes\win-x64\native\liblzma.dll')"
-		   Text="Missing native library: runtimes\win-x64\native\liblzma.dll" />
-	<Error Condition="!Exists('runtimes\win-arm64\native\liblzma.dll')"
-		   Text="Missing native library: runtimes\win-arm64\native\liblzma.dll" />
-	<Error Condition="!Exists('runtimes\linux-x64\native\liblzma.so')"
-		   Text="Missing native library: runtimes\linux-x64\native\liblzma.so" />
-	<Error Condition="!Exists('runtimes\linux-arm64\native\liblzma.so')"
-		   Text="Missing native library: runtimes\linux-arm64\native\liblzma.so" />
-	<Error Condition="!Exists('runtimes\osx-x64\native\liblzma.dylib')"
-		   Text="Missing native library: runtimes\osx-x64\native\liblzma.dylib" />
-	<Error Condition="!Exists('runtimes\osx-arm64\native\liblzma.dylib')"
-		   Text="Missing native library: runtimes\osx-arm64\native\liblzma.dylib" />
-  </Target>
+		<None Include="runtimes/win-arm64/native/liblzma.dll"
+			Condition="Exists('runtimes/win-arm64/native/liblzma.dll')"
+			CopyToOutputDirectory="PreserveNewest"
+			Pack="true"
+			PackagePath="runtimes/win-arm64/native/liblzma.dll" />
+
+		<None Include="runtimes/linux-x64/native/liblzma.so"
+			Condition="Exists('runtimes/linux-x64/native/liblzma.so')"
+			CopyToOutputDirectory="PreserveNewest"
+			Pack="true"
+			PackagePath="runtimes/linux-x64/native/liblzma.so" />
+
+		<None Include="runtimes/linux-arm64/native/liblzma.so"
+			Condition="Exists('runtimes/linux-arm64/native/liblzma.so')"
+			CopyToOutputDirectory="PreserveNewest"
+			Pack="true"
+			PackagePath="runtimes/linux-arm64/native/liblzma.so" />
+
+		<None Include="runtimes/osx-x64/native/liblzma.dynlib"
+			Condition="Exists('runtimes/osx-x64/native/liblzma.dynlib')"
+			CopyToOutputDirectory="PreserveNewest"
+			Pack="true"
+			PackagePath="runtimes/osx-x64/native/liblzma.dynlib" />
+
+		<None Include="runtimes/osx-arm64/native/liblzma.dynlib"
+			Condition="Exists('runtimes/osx-arm64/native/liblzma.dynlib')"
+			CopyToOutputDirectory="PreserveNewest"
+			Pack="true"
+			PackagePath="runtimes/osx-arm64/native/liblzma.dynlib" />
+			</ItemGroup>
+
+	<!-- Validate all native libraries are present before packing. All native files must exist -->
+	<Target Name="ValidateNativeLibraries" BeforeTargets="GenerateNuspec">
+		<Error Condition="!Exists('runtimes/win-x64/native/liblzma.dll')"
+			Text="Missing native library: runtimes/win-x64/native/liblzma.dll" />
+
+		<Error Condition="!Exists('runtimes/win-arm64/native/liblzma.dll')"
+			Text="Missing native library: runtimes/win-arm64/native/liblzma.dll" />
+
+		<Error Condition="!Exists('runtimes/linux-x64/native/liblzma.so')"
+			Text="Missing native library: runtimes/linux-x64/native/liblzma.so" />
+
+		<Error Condition="!Exists('runtimes/linux-arm64/native/liblzma.so')"
+			Text="Missing native library: runtimes/linux-arm64/native/liblzma.so" />
+
+		<Error Condition="!Exists('runtimes/osx-x64/native/liblzma.dynlib')"
+			Text="Missing native library: runtimes/osx-x64/native/liblzma.dynlib" />
+
+		<Error Condition="!Exists('runtimes/osx-arm64/native/liblzma.dynlib')"
+			Text="Missing native library: runtimes/osx-arm64/native/liblzma.dynlib" />
+	</Target>
 
 </Project>
