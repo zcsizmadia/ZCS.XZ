@@ -120,7 +120,7 @@ jobs:
             10.0.x
 
       - name: Download all native library artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: native-lib-*
           path: ZCS.XZ/runtimes
@@ -156,7 +156,7 @@ jobs:
             10.0.x
 
       - name: Download NuGet package artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: nuget-package
           path: nupkgs
@@ -181,7 +181,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Download NuGet package artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: nuget-package
           path: nupkgs
