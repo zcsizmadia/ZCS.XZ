@@ -1,0 +1,63 @@
+name: 'Build LibLzma'
+description: 
+
+inputs:
+  runtimeId:
+    description: 'The runtime identifier (RID) to build for, e.g. linux-x64, win-x64, osx-arm64, etc.'
+    required: true
+  libFile:
+    description: 'The path to the built liblzma file relative to the vcpkg installed directory, e.g. lib/liblzma.so, bin/liblzma.dll, etc.'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+      # Install packages needed for building and testing the native libraries.
+    - name: Install packages
+      shell: sh
+      run: |
+        if [ -f /etc/alpine-release ]; then
+          apk add --no-cache build-base cmake git ninja curl zip unzip tar bash icu pkgconf perl linux-headers
+        fi
+
+    - name: Install vcpkg
+      uses: lukka/run-vcpkg@v11
+      with:
+        vcpkgGitCommitId: "81e3c888ef717a026eb57bb2f3cb0dbd30246271"
+
+    - name: Install .NET SDKs
+      uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: |
+          8.0.x
+          9.0.x
+          10.0.x
+
+    - name: Build liblzma
+      shell: bash
+      run: |
+        vcpkg install liblzma:${{ inputs.runtimeId }}
+
+    - name: Copy to runtimes
+      shell: bash
+      run: |
+        mkdir -p ZCS.XZ/runtimes/${{ inputs.runtimeId }}/native
+        cp -L vcpkg/installed/${{ inputs.runtimeId }}/${{ inputs.libFile }} ZCS.XZ/runtimes/${{ inputs.runtimeId }}/native/
+
+    - name: Check if xz installed (needed only for testing)
+      shell: bash
+      run: |
+        xz --version
+
+    - name: Build and test
+      shell: bash
+      run: |
+        dotnet restore
+        dotnet build -c Release --no-restore
+        dotnet test -c Release --no-build 
+
+    - name: Upload native library artifact
+      uses: actions/upload-artifact@v7
+      with:
+        name: native-lib-${{ inputs.runtimeId }}
+        path: ZCS.XZ/runtimes

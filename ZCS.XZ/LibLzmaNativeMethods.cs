@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace ZCS.XZ;
@@ -12,7 +13,7 @@ namespace ZCS.XZ;
 public static class LibLzmaNativeMethods
 {
     /// <summary>
-    /// The name of the native liblzma library used for DllImport.
+    /// The name of the native liblzma library
     /// </summary>
     private const string LibLzma = "liblzma";
 
@@ -270,7 +271,8 @@ public static class LibLzmaNativeMethods
     /// <param name="preset">Compression preset (0–9, optionally OR'd with extreme flag).</param>
     /// <param name="check">Integrity check type.</param>
     /// <returns><see cref="LZMA_OK"/> on success, or an error code.</returns>
-    [DllImport(LibLzma, CallingConvention = CallingConvention.Cdecl)]
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static extern int lzma_easy_encoder(
         ref LzmaStream strm,
         uint preset,
@@ -282,7 +284,8 @@ public static class LibLzmaNativeMethods
     /// <param name="strm">The lzma_stream to initialize.</param>
     /// <param name="options">Multithreading and compression options.</param>
     /// <returns><see cref="LZMA_OK"/> on success, or an error code.</returns>
-    [DllImport(LibLzma, CallingConvention = CallingConvention.Cdecl)]
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static extern int lzma_stream_encoder_mt(
         ref LzmaStream strm,
         ref LzmaMt options);
@@ -294,7 +297,8 @@ public static class LibLzmaNativeMethods
     /// <param name="memlimit">Maximum memory usage in bytes (<see cref="ulong.MaxValue"/> for no limit).</param>
     /// <param name="flags">Decoder flags (e.g., <see cref="LZMA_CONCATENATED"/>).</param>
     /// <returns><see cref="LZMA_OK"/> on success, or an error code.</returns>
-    [DllImport(LibLzma, CallingConvention = CallingConvention.Cdecl)]
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static extern int lzma_stream_decoder(
         ref LzmaStream strm,
         ulong memlimit,
@@ -307,7 +311,8 @@ public static class LibLzmaNativeMethods
     /// <param name="memlimit">Maximum memory usage in bytes (<see cref="ulong.MaxValue"/> for no limit).</param>
     /// <param name="flags">Decoder flags (e.g., <see cref="LZMA_CONCATENATED"/>).</param>
     /// <returns><see cref="LZMA_OK"/> on success, or an error code.</returns>
-    [DllImport(LibLzma, CallingConvention = CallingConvention.Cdecl)]
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static extern int lzma_auto_decoder(
         ref LzmaStream strm,
         ulong memlimit,
@@ -320,7 +325,8 @@ public static class LibLzmaNativeMethods
     /// <param name="strm">The lzma_stream containing input/output buffer state.</param>
     /// <param name="action">The action to perform (e.g., <see cref="LZMA_RUN"/>, <see cref="LZMA_FINISH"/>).</param>
     /// <returns><see cref="LZMA_OK"/> if progress was made, <see cref="LZMA_STREAM_END"/> when finished, or an error code.</returns>
-    [DllImport(LibLzma, CallingConvention = CallingConvention.Cdecl)]
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static extern int lzma_code(
         ref LzmaStream strm,
         int action);
@@ -331,7 +337,8 @@ public static class LibLzmaNativeMethods
     /// Safe to call on a zeroed or already-freed stream.
     /// </summary>
     /// <param name="strm">The lzma_stream to free.</param>
-    [DllImport(LibLzma, CallingConvention = CallingConvention.Cdecl)]
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static extern void lzma_end(
         ref LzmaStream strm);
 
@@ -341,14 +348,16 @@ public static class LibLzmaNativeMethods
     /// For example, version 5.8.3 returns <c>50080030</c>.
     /// </summary>
     /// <returns>The encoded version number.</returns>
-    [DllImport(LibLzma, CallingConvention = CallingConvention.Cdecl)]
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static extern uint lzma_version_number();
 
     /// <summary>
     /// Returns the runtime version of liblzma as a null-terminated string (e.g., <c>"5.8.3"</c>).
     /// </summary>
     /// <returns>A pointer to the version string.</returns>
-    [DllImport(LibLzma, CallingConvention = CallingConvention.Cdecl)]
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static extern IntPtr lzma_version_string();
 
     // ──────────────────────────────────────────────

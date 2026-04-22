@@ -1,0 +1,39 @@
+name: 'Validate NuPkg'
+description: 'Validates the NuGet package by ensuring all native libraries are correctly included and functional.' 
+
+runs:
+  using: "composite"
+  steps:
+    # Install packages needed for testing the native libraries.
+    - name: Install packages
+      shell: sh
+      run: |
+        if [ -f /etc/alpine-release ]; then
+          apk add --no-cache bash icu
+        fi
+
+    - name: Install .NET SDKs
+      uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: |
+          8.0.x
+          9.0.x
+          10.0.x
+
+    - name: Download NuGet package artifact
+      uses: actions/download-artifact@v8
+      with:
+        pattern: nuget-package
+        path: nupkgs
+
+    - name: Validate NuGet package
+      shell: bash
+      run: |
+        # We run the ValidateNupkg project, which references the built package,
+        # to ensure that it can be used correctly, before we push it to nuget.org.
+        cd ValidateNupkg
+        dotnet restore
+        dotnet build -c Release --no-restore
+        dotnet run -c Release --no-build -f net8.0
+        dotnet run -c Release --no-build -f net9.0
+        dotnet run -c Release --no-build -f net10.0
