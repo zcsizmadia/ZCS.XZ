@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace ZCS.XZ;
@@ -9,10 +10,10 @@ namespace ZCS.XZ;
 /// This class handles automatic native library resolution across platforms
 /// (Windows, Linux, macOS) and architectures (x64, arm64, etc.).
 /// </summary>
-public static class LibLzmaNativeMethods
+public static partial class LibLzmaNativeMethods
 {
     /// <summary>
-    /// The name of the native liblzma library used for DllImport.
+    /// The name of the native liblzma library
     /// </summary>
     private const string LibLzma = "liblzma";
 
@@ -34,7 +35,7 @@ public static class LibLzmaNativeMethods
     /// <param name="searchPath">The DLL import search path hint.</param>
     /// <returns>A handle to the loaded native library, or <see cref="IntPtr.Zero"/> to fall back to default loading.</returns>
     [ExcludeFromCodeCoverage]
-    private static IntPtr ResolveRuntimeDll(string libraryName, Assembly assembly, DllImportSearchPath? searchPath)
+    public static IntPtr ResolveRuntimeDll(string libraryName, Assembly assembly, DllImportSearchPath? searchPath)
     {
         // Only intercept the specific library
         if (libraryName != LibLzma)
@@ -42,32 +43,53 @@ public static class LibLzmaNativeMethods
             return IntPtr.Zero; // Fallback to default loading logic
         }
 
-        // Determine the Runtime Identifier (RID), architecture and library extension
-        string os =
-            RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "win" :
-            RuntimeInformation.IsOSPlatform(OSPlatform.Linux) ? "linux" :
-            RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ? "osx" : "unix";
+        string os;
+        string libraryNameExt;
         string arch = RuntimeInformation.ProcessArchitecture.ToString().ToLower();
-        string libraryExt =
-            RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? ".dll" :
-            RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ? ".dylib" : ".so";
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            os = "win";
+            libraryNameExt = $"{LibLzma}.dll";
+        }
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            os = "osx";
+            libraryNameExt = $"{LibLzma}.dylib";
+        }
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            if (RuntimeInformation.RuntimeIdentifier.Contains("musl"))
+            {
+                os = "linux-musl";
+            }
+            else
+            {
+                os = "linux";
+            }
+            libraryNameExt = $"{LibLzma}.so";
+        }
+        else
+        {
+            throw new PlatformNotSupportedException("Unsupported OS platform");
+        }
 
         // Attempt to load the library from the assembly location directory
-        string libPath = Path.Combine(Path.GetDirectoryName(assembly.Location) ?? AppContext.BaseDirectory, "runtimes", $"{os}-{arch}", "native", $"{libraryName}{libraryExt}");
+        string libPath = Path.Combine(Path.GetDirectoryName(assembly.Location) ?? AppContext.BaseDirectory, "runtimes", $"{os}-{arch}", "native", $"{libraryNameExt}");
         if (File.Exists(libPath))
         {
             return NativeLibrary.Load(libPath);
         }
 
         // Attempt to load the library from the application base directory
-        libPath = Path.Combine(AppContext.BaseDirectory, "runtimes", $"{os}-{arch}", "native", $"{libraryName}{libraryExt}");
+        libPath = Path.Combine(AppContext.BaseDirectory, "runtimes", $"{os}-{arch}", "native", $"{libraryNameExt}");
         if (File.Exists(libPath))
         {
             return NativeLibrary.Load(libPath);
         }
 
         // Attempt using the default search path
-        if (NativeLibrary.TryLoad($"{libraryName}{libraryExt}", assembly, searchPath, out var handle))
+        if (NativeLibrary.TryLoad($"{libraryNameExt}", assembly, searchPath, out var handle))
         {
             return handle;
         }
@@ -270,8 +292,9 @@ public static class LibLzmaNativeMethods
     /// <param name="preset">Compression preset (0–9, optionally OR'd with extreme flag).</param>
     /// <param name="check">Integrity check type.</param>
     /// <returns><see cref="LZMA_OK"/> on success, or an error code.</returns>
-    [DllImport(LibLzma, CallingConvention = CallingConvention.Cdecl)]
-    internal static extern int lzma_easy_encoder(
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial int lzma_easy_encoder(
         ref LzmaStream strm,
         uint preset,
         int check);
@@ -282,8 +305,9 @@ public static class LibLzmaNativeMethods
     /// <param name="strm">The lzma_stream to initialize.</param>
     /// <param name="options">Multithreading and compression options.</param>
     /// <returns><see cref="LZMA_OK"/> on success, or an error code.</returns>
-    [DllImport(LibLzma, CallingConvention = CallingConvention.Cdecl)]
-    internal static extern int lzma_stream_encoder_mt(
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial int lzma_stream_encoder_mt(
         ref LzmaStream strm,
         ref LzmaMt options);
 
@@ -294,8 +318,9 @@ public static class LibLzmaNativeMethods
     /// <param name="memlimit">Maximum memory usage in bytes (<see cref="ulong.MaxValue"/> for no limit).</param>
     /// <param name="flags">Decoder flags (e.g., <see cref="LZMA_CONCATENATED"/>).</param>
     /// <returns><see cref="LZMA_OK"/> on success, or an error code.</returns>
-    [DllImport(LibLzma, CallingConvention = CallingConvention.Cdecl)]
-    internal static extern int lzma_stream_decoder(
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial int lzma_stream_decoder(
         ref LzmaStream strm,
         ulong memlimit,
         uint flags);
@@ -307,8 +332,9 @@ public static class LibLzmaNativeMethods
     /// <param name="memlimit">Maximum memory usage in bytes (<see cref="ulong.MaxValue"/> for no limit).</param>
     /// <param name="flags">Decoder flags (e.g., <see cref="LZMA_CONCATENATED"/>).</param>
     /// <returns><see cref="LZMA_OK"/> on success, or an error code.</returns>
-    [DllImport(LibLzma, CallingConvention = CallingConvention.Cdecl)]
-    internal static extern int lzma_auto_decoder(
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial int lzma_auto_decoder(
         ref LzmaStream strm,
         ulong memlimit,
         uint flags);
@@ -320,8 +346,9 @@ public static class LibLzmaNativeMethods
     /// <param name="strm">The lzma_stream containing input/output buffer state.</param>
     /// <param name="action">The action to perform (e.g., <see cref="LZMA_RUN"/>, <see cref="LZMA_FINISH"/>).</param>
     /// <returns><see cref="LZMA_OK"/> if progress was made, <see cref="LZMA_STREAM_END"/> when finished, or an error code.</returns>
-    [DllImport(LibLzma, CallingConvention = CallingConvention.Cdecl)]
-    internal static extern int lzma_code(
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial int lzma_code(
         ref LzmaStream strm,
         int action);
 
@@ -331,8 +358,9 @@ public static class LibLzmaNativeMethods
     /// Safe to call on a zeroed or already-freed stream.
     /// </summary>
     /// <param name="strm">The lzma_stream to free.</param>
-    [DllImport(LibLzma, CallingConvention = CallingConvention.Cdecl)]
-    internal static extern void lzma_end(
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial void lzma_end(
         ref LzmaStream strm);
 
     /// <summary>
@@ -341,15 +369,17 @@ public static class LibLzmaNativeMethods
     /// For example, version 5.8.3 returns <c>50080030</c>.
     /// </summary>
     /// <returns>The encoded version number.</returns>
-    [DllImport(LibLzma, CallingConvention = CallingConvention.Cdecl)]
-    internal static extern uint lzma_version_number();
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial uint lzma_version_number();
 
     /// <summary>
     /// Returns the runtime version of liblzma as a null-terminated string (e.g., <c>"5.8.3"</c>).
     /// </summary>
     /// <returns>A pointer to the version string.</returns>
-    [DllImport(LibLzma, CallingConvention = CallingConvention.Cdecl)]
-    internal static extern IntPtr lzma_version_string();
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial IntPtr lzma_version_string();
 
     // ──────────────────────────────────────────────
     // Public version API
