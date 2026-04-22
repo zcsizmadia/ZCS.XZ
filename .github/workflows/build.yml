@@ -12,7 +12,7 @@ jobs:
   build-liblzma:
     strategy:
       fail-fast: false
-      matrix: &platforms_matrix
+      matrix: &platforms-matrix
         runtimeId: [linux-x64, linux-arm64, win-x64, win-arm64, osx-x64, osx-arm64]
         include:
           - runtimeId: linux-x64
@@ -51,7 +51,7 @@ jobs:
   build-liblzma-musl:
     strategy:
       fail-fast: false
-      matrix: &platforms_matrix_musl
+      matrix: &platforms-matrix-musl
         runtimeId: [linux-musl-x64, linux-musl-arm64]
         include:
           - runtimeId: linux-musl-x64
@@ -113,7 +113,7 @@ jobs:
     if: always() && needs.build-nupkg.result == 'success'
     strategy:
       fail-fast: false
-      matrix: *platforms_matrix
+      matrix: *platforms-matrix
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -126,7 +126,7 @@ jobs:
     if: always() && needs.build-nupkg.result == 'success'
     strategy:
       fail-fast: false
-      matrix: *platforms_matrix_musl
+      matrix: *platforms-matrix-musl
 
     runs-on: ${{ matrix.os }}
     container: alpine:latest
