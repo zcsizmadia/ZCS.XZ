@@ -15,7 +15,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<None Include="runtimes/**" Pack="true" PackagePath="runtimes/" />
+		<!-- <None Include="runtimes/**" CopyToOutputDirectory="PreserveNewest" Pack="true" PackagePath="runtimes/" /> -->
+		<None Include="runtimes/**" CopyToOutputDirectory="PreserveNewest" Pack="false" />
 	</ItemGroup>
 
 </Project>
