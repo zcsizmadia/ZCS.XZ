@@ -14,8 +14,15 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<!-- <None Include="runtimes/**" CopyToOutputDirectory="PreserveNewest" Pack="true" PackagePath="runtimes/" /> -->
-		<None Include="runtimes/**" CopyToOutputDirectory="PreserveNewest" Pack="false" />
+		<!-- 
+		We want to ensure they are copied to the output directory during local development and testing without double-packing them
+		-->
+		<Content Remove="runtimes/**" />
+		<None Include="runtimes/**">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<Pack>true</Pack>
+			<PackagePath>runtimes/</PackagePath>
+		</None>
 	</ItemGroup>
 
 </Project>

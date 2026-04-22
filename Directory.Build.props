@@ -6,8 +6,8 @@
 
 	<PropertyGroup>
 		<LibLzmaVersion>5.8.3</LibLzmaVersion>
-		<Version>$(LibLzmaVersion)</Version>
-		<FileVersion>$(LibLzmaVersion).0</FileVersion>
+		<Version>$(LibLzmaVersion).1</Version>
+		<FileVersion>$(Version)</FileVersion>
 	</PropertyGroup>	  
 
 	<PropertyGroup>
