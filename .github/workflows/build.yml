@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix: &platforms_matrix
-        runtimeId: [linux-x64, linux-arm64, windows-x64, windows-arm64, macos-x64, macos-arm64]
+        runtimeId: [linux-x64, linux-arm64, win-x64, win-arm64, osx-x64, osx-arm64]
         include:
           - runtimeId: linux-x64
             os: ubuntu-latest
@@ -23,11 +23,11 @@ jobs:
             os: ubuntu-24.04-arm
             libFile: lib/liblzma.so
 
-          - runtimeId: wind-x64
+          - runtimeId: win-x64
             os: windows-latest
             libFile: bin/liblzma.dll
 
-          - runtimeId: wind-arm64
+          - runtimeId: win-arm64
             os: windows-11-arm
             libFile: bin/liblzma.dll
 
