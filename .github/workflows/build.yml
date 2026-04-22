@@ -138,7 +138,7 @@ jobs:
 
       - uses: actions/checkout@v6
 
-      - uses: ./.github/actions/validateNupkg
+      - uses: ./.github/actions/validateNuPkg
 
   publish-nupkg:
     needs: [validate-nupkg, validate-nupkg-musl]

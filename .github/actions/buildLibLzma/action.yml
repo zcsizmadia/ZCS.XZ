@@ -49,7 +49,7 @@ runs:
     - name: Check if xz installed (needed only for testing)
       shell: bash
       run: |
-        xz --version
+        echo "Found locally installed $(xz --version | head -n 1). Used for testing only."
 
     - name: Build and test
       shell: bash
