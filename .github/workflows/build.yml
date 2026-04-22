@@ -23,19 +23,19 @@ jobs:
             os: ubuntu-24.04-arm
             libFile: lib/liblzma.so
 
-          - runtimeId: windows-x64
+          - runtimeId: wind-x64
             os: windows-latest
             libFile: bin/liblzma.dll
 
-          - runtimeId: windows-arm64
+          - runtimeId: wind-arm64
             os: windows-11-arm
             libFile: bin/liblzma.dll
 
-          - runtimeId: macos-x64
+          - runtimeId: osx-x64
             os: macos-latest
             libFile: lib/liblzma.dylib
 
-          - runtimeId: macos-arm64
+          - runtimeId: osx-arm64
             os: macos-latest
             libFile: lib/liblzma.dylib
 
