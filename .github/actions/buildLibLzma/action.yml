@@ -17,7 +17,7 @@ runs:
       shell: sh
       run: |
         if [ -f /etc/alpine-release ]; then
-          apk add --no-cache build-base cmake git ninja curl zip unzip tar bash icu pkgconf perl patchelf linux-headers
+          apk add --no-cache build-base cmake git ninja curl zip unzip tar bash icu pkgconf perl linux-headers
         fi
 
     - name: Install vcpkg
@@ -35,6 +35,8 @@ runs:
 
     - name: Build liblzma
       shell: bash
+      env:
+        VCPKG_FORCE_SYSTEM_BINARIES: ${{ contains(inputs.runtimeId, 'musl') && 1 || 0}}
       run: |
         vcpkg install liblzma --triplet=${{ inputs.runtimeId }} --overlay-triplets=vcpkg-overlays/triplets
 
