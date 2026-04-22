@@ -36,7 +36,7 @@ runs:
     - name: Build liblzma
       shell: bash
       run: |
-        vcpkg install liblzma:${{ inputs.runtimeId }}
+        vcpkg install liblzma --triplet=${{ inputs.runtimeId }} --overlay-triplets=vcpkg-overlays/triplets
 
     - name: Copy to runtimes
       shell: bash
