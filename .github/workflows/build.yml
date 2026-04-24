@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix: &platforms-matrix
-        runtimeId: [linux-x64, linux-arm64, win-x64, win-arm64, osx-x64, osx-arm64]
+        runtimeId: [linux-x64, linux-arm64, linux-musl-x64, linux-musl-arm64, win-x64, win-arm64, osx-x64, osx-arm64]
         include:
           - runtimeId: linux-x64
             os: ubuntu-latest
@@ -19,6 +19,16 @@ jobs:
 
           - runtimeId: linux-arm64
             os: ubuntu-24.04-arm
+            libFile: lib/liblzma.so
+
+          - runtimeId: linux-musl-x64
+            os: ubuntu-latest
+            container: alpine:latest
+            libFile: lib/liblzma.so
+
+          - runtimeId: linux-musl-arm64
+            os: ubuntu-24.04-arm
+            container: alpine:latest
             libFile: lib/liblzma.so
 
           - runtimeId: win-x64
@@ -38,30 +48,9 @@ jobs:
             libFile: lib/liblzma.dylib
 
     runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v6
+    container: ${{ matrix.container }}
+    name: build-liblzma (${{ matrix.runtimeId }})
 
-      - uses: ./.github/actions/buildLibLzma
-        with:
-          runtimeId: ${{ matrix.runtimeId }}
-          libFile: ${{ matrix.libFile }}
-
-  build-liblzma-musl:
-    strategy:
-      fail-fast: false
-      matrix: &platforms-matrix-musl
-        runtimeId: [linux-musl-x64, linux-musl-arm64]
-        include:
-          - runtimeId: linux-musl-x64
-            os: ubuntu-latest
-            libFile: lib/liblzma.so
-
-          - runtimeId: linux-musl-arm64
-            os: ubuntu-24.04-arm
-            libFile: lib/liblzma.so
-
-    runs-on: ${{ matrix.os }}
-    container: alpine:latest
     steps:
       # action/checkout fails on Alpine Arm64 without this fix
       - name: Fix Alpine arm64 compatibility
@@ -70,15 +59,62 @@ jobs:
 
       - uses: actions/checkout@v6
 
-      - uses: ./.github/actions/buildLibLzma
+      # Install packages needed for building and testing the native libraries.
+      - name: Install packages
+        shell: sh
+        run: |
+          if [ -f /etc/alpine-release ]; then
+            apk add --no-cache build-base cmake git ninja curl zip unzip tar bash icu pkgconf perl xz linux-headers
+          fi
+
+      - name: Install vcpkg
+        uses: lukka/run-vcpkg@v11
         with:
-          runtimeId: ${{ matrix.runtimeId }}
-          libFile: ${{ matrix.libFile }}
+          vcpkgGitCommitId: "42f37e46d37baf7b218966434b91116bddf73461"
+
+      - name: Install .NET SDKs
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
+
+      - name: Build liblzma
+        shell: bash
+        env:
+          VCPKG_FORCE_SYSTEM_BINARIES: ${{ contains(matrix.runtimeId, 'musl') && 1 || 0}}
+        run: |
+          vcpkg install liblzma --triplet=${{ matrix.runtimeId }} --overlay-triplets=vcpkg-overlays/triplets
+
+      - name: Copy to runtimes
+        shell: bash
+        run: |
+          mkdir -p ZCS.XZ/runtimes/${{ matrix.runtimeId }}/native
+          cp -L vcpkg/installed/${{ matrix.runtimeId }}/${{ matrix.libFile }} ZCS.XZ/runtimes/${{ matrix.runtimeId }}/native/
+
+      - name: Check if xz installed (needed only for testing)
+        shell: bash
+        run: |
+          echo "Found locally installed $(xz --version | head -n 1). Used for testing only."
+
+      - name: Build and test
+        shell: bash
+        run: |
+          dotnet restore
+          dotnet build -c Release --no-restore
+          dotnet test -c Release --no-build 
+
+      - name: Upload native library artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-lib-${{ matrix.runtimeId }}
+          path: ZCS.XZ/runtimes
 
   build-nupkg:
-    needs: [build-liblzma, build-liblzma-musl]
+    needs: [build-liblzma]
     runs-on: ubuntu-latest
-    if: always() && needs.build-liblzma.result == 'success' && needs.build-liblzma-musl.result == 'success'
+    if: always() && needs.build-liblzma.result == 'success'
     steps:
       - uses: actions/checkout@v6
 
@@ -114,20 +150,9 @@ jobs:
       matrix: *platforms-matrix
 
     runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v6
+    container: ${{ matrix.container }}
+    name: validate-nupkg (${{ matrix.runtimeId }})
 
-      - uses: ./.github/actions/validateNuPkg
-
-  validate-nupkg-musl:
-    needs: [build-nupkg]
-    if: always() && needs.build-nupkg.result == 'success'
-    strategy:
-      fail-fast: false
-      matrix: *platforms-matrix-musl
-
-    runs-on: ${{ matrix.os }}
-    container: alpine:latest
     steps:
       # action/checkout fails on Alpine Arm64 without this fix
       - name: Fix Alpine arm64 compatibility
@@ -136,4 +161,36 @@ jobs:
 
       - uses: actions/checkout@v6
 
-      - uses: ./.github/actions/validateNuPkg
+      # Install packages needed for testing the native libraries.
+      - name: Install packages
+        shell: sh
+        run: |
+          if [ -f /etc/alpine-release ]; then
+            apk add --no-cache bash icu
+          fi
+
+      - name: Install .NET SDKs
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
+
+      - name: Download NuGet package artifact
+        uses: actions/download-artifact@v8
+        with:
+          pattern: nuget-package
+          path: nupkgs
+
+      - name: Validate NuGet package
+        shell: bash
+        run: |
+          # We run the ValidateNupkg project, which references the built package,
+          # to ensure that it can be used correctly, before we push it to nuget.org.
+          cd ValidateNupkg
+          dotnet restore
+          dotnet build -c Release --no-restore
+          dotnet run -c Release --no-build -f net8.0
+          dotnet run -c Release --no-build -f net9.0
+          dotnet run -c Release --no-build -f net10.0
