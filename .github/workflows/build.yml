@@ -40,7 +40,7 @@ jobs:
             libFile: bin/liblzma.dll
 
           - runtimeId: osx-x64
-            os: macos-latest
+            os: macos-26-intel
             libFile: lib/liblzma.dylib
 
           - runtimeId: osx-arm64
