@@ -70,7 +70,7 @@ jobs:
       - name: Install vcpkg
         uses: lukka/run-vcpkg@v11
         with:
-          vcpkgGitCommitId: "42f37e46d37baf7b218966434b91116bddf73461"
+          vcpkgGitCommitId: "9e44ec0e9f247d77c230ced0ee66c76296837807"
 
       - name: Install .NET SDKs
         uses: actions/setup-dotnet@v6
