@@ -19,6 +19,8 @@ A high-performance .NET library for **XZ (LZMA2) compression and decompression**
 - **Legacy `.lzma` output** — write the older LZMA_Alone format for tools that cannot read `.xz`.
 - **Checksums** — `XZChecksum` exposes liblzma's CRC-32 and CRC-64 implementations.
 - **Custom filter chains** — BCJ (x86, ARM64, RISC-V and more) and delta filters via `XZFilterChain`, using the `xz` command-line syntax.
+- **File inspection** — `XZFileInfo` reads the uncompressed size, block layout and check types from the index, without decompressing.
+- **Random access** — `XZSeekableDecompressStream` seeks to any offset by decoding only the block that contains it.
 - **Concatenated streams** — supports concatenated `.xz` members (e.g., files produced by `xz --keep` with multiple appends).
 - **Cross-platform** — ships native liblzma binaries for Windows, Linux, and macOS on x64 and ARM64.
 - **Multi-targeting** — supports .NET 8, .NET 9, and .NET 10.
@@ -127,6 +129,31 @@ byte[] packed = XZBuffer.Compress("some data"u8);
 byte[] unpacked = XZBuffer.Decompress(packed);
 ```
 
+### Read the uncompressed size without decompressing
+
+```csharp
+using ZCS.XZ;
+
+using var file = File.OpenRead("data.xz");
+using var info = XZFileInfo.Read(file);
+
+Console.WriteLine($"{info.UncompressedSize} bytes in {info.BlockCount} block(s)");
+```
+
+### Seek inside a compressed file
+
+```csharp
+using ZCS.XZ;
+
+using var file = File.OpenRead("data.xz");
+using var xz = new XZSeekableDecompressStream(file);
+
+// Read the last kilobyte without decompressing everything before it.
+xz.Seek(-1024, SeekOrigin.End);
+var tail = new byte[1024];
+xz.ReadExactly(tail);
+```
+
 ### Compress an executable with a BCJ filter
 
 ```csharp
@@ -188,7 +215,7 @@ A **write-only** stream that compresses data and writes the `.xz` output to an u
 
 ### `XZDecompressStream`
 
-A **read-only** stream that decompresses `.xz` (or legacy `.lzma`) data from an underlying stream.
+A **read-only**, forward-only stream that decompresses `.xz` (or legacy `.lzma`) data from an underlying stream. For seeking, see [`XZSeekableDecompressStream`](#xzseekabledecompressstream).
 
 | Constructor | Description |
 |---|---|
@@ -260,6 +287,37 @@ Pass the previous result as `seed` to build a checksum up across several calls.
 ### `XZProgress`
 
 A `readonly record struct` with `BytesIn` and `BytesOut`, returned by `XZCompressStream.GetProgress()` and `XZDecompressStream.GetProgress()`. Prefer it over the stream byte counters when using multiple threads, where in-flight work is not yet reflected in the totals.
+
+### `XZFileInfo`
+
+The index of an `.xz` file — uncompressed size, block layout and check types — read without decompressing. The equivalent of `xz --list`. Implements `IDisposable`; the source stream must be seekable.
+
+| Member | Type | Description |
+|---|---|---|
+| `Read(Stream, ulong memoryLimit)` | `XZFileInfo` | Parse the index. |
+| `UncompressedSize` | `long` | Size after decompression. |
+| `CompressedSize` | `long` | Size of the file the index describes. |
+| `BlockCount` | `long` | Blocks across all streams. |
+| `StreamCount` | `long` | Concatenated streams. |
+| `Checks` | `IReadOnlyList<LzmaCheck>` | Integrity check types used. |
+| `CompressionRatio` | `double` | Compressed over uncompressed, or 0 when empty. |
+
+### `XZSeekableDecompressStream`
+
+A seekable, read-only view over an `.xz` file. `XZDecompressStream` decodes forward only; this class reads the index first and then decodes individual blocks on demand, so `Length` and `Seek` are real operations rather than a scan from the start.
+
+| Constructor | Description |
+|---|---|
+| `XZSeekableDecompressStream(Stream, bool leaveOpen = false, int bufferSize = 81920)` | Reads the index itself and owns it. |
+| `XZSeekableDecompressStream(Stream, XZFileInfo, bool leaveOpen = false, int bufferSize = 81920)` | Reuses an index you already read; you keep ownership of it. |
+
+`Length`, `Position` and `Seek` behave as on any seekable stream, and `FileInfo` exposes the index.
+
+> **Note:** Seeking jumps to the block containing the target offset and decodes forward from that block's start, so the cost is bounded by the **block size**, not the file size. A file written as a single block gains little — set `XZCompressOptions.Threads` above 1 when writing, since the multi-threaded encoder splits output into several blocks.
+
+> **Note:** Only `.xz` has an index, so legacy `.lzma` and `.lz` input is not supported here. Use `XZDecompressStream` for those.
+
+Integrity checks are verified when a block is read through to its end. Seeking away from the middle of a block leaves nothing to verify, so random access does not check the blocks it skips.
 
 ### `XZFilterChain`
 
