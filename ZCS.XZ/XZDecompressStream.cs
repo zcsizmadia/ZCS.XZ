@@ -11,9 +11,14 @@ namespace ZCS.XZ;
 /// </summary>
 /// <remarks>
 /// <para>
-/// This stream wraps the liblzma auto-decoder, which automatically detects
+/// By default this stream wraps the liblzma auto-decoder, which automatically detects
 /// whether the input is in .xz or legacy .lzma format. The <c>LZMA_CONCATENATED</c>
 /// flag is enabled to support concatenated .xz streams and to validate trailing data.
+/// </para>
+/// <para>
+/// Passing an <see cref="XZDecompressOptions"/> with <see cref="XZDecompressOptions.Threads"/>
+/// above 1 switches to the multithreaded decoder instead, which handles <strong>.xz input
+/// only</strong> — it gives up the legacy-format auto-detection described above.
 /// </para>
 /// <para>
 /// Decoded output is buffered internally. When the caller's read buffer is smaller
@@ -139,9 +144,33 @@ public sealed class XZDecompressStream : Stream
     /// <exception cref="ArgumentException"><paramref name="innerStream"/> is not readable.</exception>
     /// <exception cref="XZException">liblzma decoder initialization failed.</exception>
     public XZDecompressStream(Stream innerStream, ulong memoryLimit, int bufferSize, bool leaveOpen)
+        : this(innerStream, new XZDecompressOptions { MemoryLimit = memoryLimit, BufferSize = bufferSize }, leaveOpen)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new <see cref="XZDecompressStream"/> with the specified decompression options.
+    /// </summary>
+    /// <param name="innerStream">The readable stream containing compressed data.</param>
+    /// <param name="options">Decompression options (threads, memory limits, buffer size).</param>
+    /// <param name="leaveOpen">
+    /// <c>true</c> to leave <paramref name="innerStream"/> open after this stream is disposed;
+    /// <c>false</c> to dispose it.
+    /// </param>
+    /// <remarks>
+    /// When <see cref="XZDecompressOptions.Threads"/> resolves to more than 1, this uses the
+    /// multithreaded decoder, which accepts <strong>.xz input only</strong>. Otherwise it uses
+    /// the auto-detecting decoder, which also handles legacy <c>.lzma</c> and <c>.lz</c> input.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="innerStream"/> or <paramref name="options"/> is <c>null</c>.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><see cref="XZDecompressOptions.BufferSize"/> is zero or negative.</exception>
+    /// <exception cref="ArgumentException"><paramref name="innerStream"/> is not readable.</exception>
+    /// <exception cref="XZException">liblzma decoder initialization failed.</exception>
+    public XZDecompressStream(Stream innerStream, XZDecompressOptions options, bool leaveOpen)
     {
         ArgumentNullException.ThrowIfNull(innerStream);
-        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(bufferSize, 0);
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(options.BufferSize, 0);
 
         if (!innerStream.CanRead)
         {
@@ -150,14 +179,25 @@ public sealed class XZDecompressStream : Stream
 
         _innerStream = innerStream;
         _leaveOpen = leaveOpen;
-        _inputBuffer = new byte[bufferSize];
-        _outputBuffer = new byte[bufferSize];
+        _inputBuffer = new byte[options.BufferSize];
+        _outputBuffer = new byte[options.BufferSize];
         _lzmaStream = new LzmaStream();
 
-        // lzma_auto_decoder handles both .xz and legacy .lzma streams
         // LZMA_CONCATENATED enables decoding of concatenated .xz/.lz files
         // and requires LZMA_FINISH to get LZMA_STREAM_END, ensuring trailing data is validated
-        int ret = lzma_auto_decoder(ref _lzmaStream, memoryLimit, LZMA_CONCATENATED);
+        int ret;
+        if (options.GetThreadCount() > 1)
+        {
+            // lzma_stream_decoder_mt decodes .xz only; it cannot auto-detect .lzma or .lz
+            var mt = options.CreateMtOptions(LZMA_CONCATENATED);
+            ret = lzma_stream_decoder_mt(ref _lzmaStream, ref mt);
+        }
+        else
+        {
+            // lzma_auto_decoder handles .xz as well as legacy .lzma and .lz streams
+            ret = lzma_auto_decoder(ref _lzmaStream, options.MemoryLimit, LZMA_CONCATENATED);
+        }
+
         ThrowIfLzmaInitError(ret);
 
         _inputHandle = GCHandle.Alloc(_inputBuffer, GCHandleType.Pinned);
@@ -177,6 +217,52 @@ public sealed class XZDecompressStream : Stream
 
     /// <summary>Gets a value indicating whether the stream supports seeking. Always returns <c>false</c>.</summary>
     public override bool CanSeek => false;
+
+    /// <summary>
+    /// Gets the integrity check type of the stream being decoded.
+    /// </summary>
+    /// <remarks>
+    /// This is only meaningful once the stream header has been decoded, which happens on the
+    /// first <see cref="Read(byte[], int, int)"/>. Before any data has been read it reports
+    /// <see cref="LzmaCheck.None"/>, which is indistinguishable from a stream that genuinely
+    /// carries no check.
+    /// </remarks>
+    /// <exception cref="ObjectDisposedException">The stream has been disposed.</exception>
+    public LzmaCheck Check
+    {
+        get
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            return (LzmaCheck)lzma_get_check(ref _lzmaStream);
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the decoder's memory usage limit, in bytes.
+    /// </summary>
+    /// <remarks>
+    /// Setting this allows a caller to raise the limit and continue after a decode failed with
+    /// <c>LZMA_MEMLIMIT_ERROR</c>, instead of having to construct a new stream. Lowering it
+    /// below what the decoder has already allocated fails.
+    /// </remarks>
+    /// <exception cref="ObjectDisposedException">The stream has been disposed.</exception>
+    /// <exception cref="XZException">
+    /// The new limit is below the amount the decoder has already allocated
+    /// (<c>LZMA_MEMLIMIT_ERROR</c>).
+    /// </exception>
+    public ulong MemoryLimit
+    {
+        get
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            return lzma_memlimit_get(ref _lzmaStream);
+        }
+        set
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            ThrowIfLzmaInitError(lzma_memlimit_set(ref _lzmaStream, value));
+        }
+    }
 
     /// <summary>Gets a value indicating whether the stream supports writing. Always returns <c>false</c>.</summary>
     public override bool CanWrite => false;

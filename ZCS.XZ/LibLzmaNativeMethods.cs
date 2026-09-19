@@ -271,8 +271,23 @@ public static partial class LibLzmaNativeMethods
         public uint reserved_int2;
         public uint reserved_int3;
         public uint reserved_int4;
-        public ulong reserved_int5;
-        public ulong reserved_int6;
+
+        /// <summary>
+        /// Decoder only: soft memory limit that reduces the worker thread count.
+        /// When exceeded, liblzma lowers the number of threads instead of failing,
+        /// so this never causes <see cref="LZMA_MEMLIMIT_ERROR"/>.
+        /// liblzma clamps this to a minimum of 1; a value of 1 disables threading.
+        /// Ignored by the encoder.
+        /// </summary>
+        public ulong memlimit_threading;
+
+        /// <summary>
+        /// Decoder only: hard memory limit. If decoding needs more than this even in
+        /// single-threaded mode, <see cref="lzma_code"/> returns <see cref="LZMA_MEMLIMIT_ERROR"/>.
+        /// Ignored by the encoder.
+        /// </summary>
+        public ulong memlimit_stop;
+
         public ulong reserved_int7;
         public ulong reserved_int8;
         public IntPtr reserved_ptr1;
@@ -326,6 +341,26 @@ public static partial class LibLzmaNativeMethods
         uint flags);
 
     /// <summary>
+    /// Initializes a multithreaded .xz stream decoder.
+    /// </summary>
+    /// <remarks>
+    /// Unlike <see cref="lzma_auto_decoder"/>, this decoder handles the .xz format only —
+    /// it does not auto-detect legacy .lzma or .lz input. Parallelism additionally requires
+    /// Block Headers carrying compressed and uncompressed sizes (as written by
+    /// <see cref="lzma_stream_encoder_mt"/>); other streams decode single-threaded.
+    /// Only the <c>threads</c>, <c>flags</c>, <c>timeout</c>, <c>memlimit_threading</c>,
+    /// and <c>memlimit_stop</c> members of <paramref name="options"/> are read.
+    /// </remarks>
+    /// <param name="strm">The lzma_stream to initialize.</param>
+    /// <param name="options">Multithreading and memory-limit options.</param>
+    /// <returns><see cref="LZMA_OK"/> on success, or an error code.</returns>
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial int lzma_stream_decoder_mt(
+        ref LzmaStream strm,
+        ref LzmaMt options);
+
+    /// <summary>
     /// Initializes an auto-detecting decoder that handles both .xz and legacy .lzma formats.
     /// </summary>
     /// <param name="strm">The lzma_stream to initialize.</param>
@@ -362,6 +397,91 @@ public static partial class LibLzmaNativeMethods
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static partial void lzma_end(
         ref LzmaStream strm);
+
+    /// <summary>
+    /// Returns the integrity check type of the .xz stream currently being decoded.
+    /// </summary>
+    /// <remarks>
+    /// The result is only meaningful after the stream header has been decoded, i.e. after
+    /// at least one <see cref="lzma_code"/> call has consumed the header. Before that,
+    /// liblzma reports <c>LZMA_CHECK_NONE</c>.
+    /// </remarks>
+    /// <param name="strm">The lzma_stream being decoded.</param>
+    /// <returns>The lzma_check value for the stream.</returns>
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial int lzma_get_check(
+        ref LzmaStream strm);
+
+    /// <summary>
+    /// Returns the approximate memory usage, in bytes, of a single-threaded encoder
+    /// initialized with the given preset.
+    /// </summary>
+    /// <param name="preset">Compression preset (0–9, optionally OR'd with the extreme flag).</param>
+    /// <returns>Memory usage in bytes, or <see cref="ulong.MaxValue"/> if the preset is invalid.</returns>
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial ulong lzma_easy_encoder_memusage(uint preset);
+
+    /// <summary>
+    /// Returns the approximate memory usage, in bytes, needed to <em>decode</em> a stream
+    /// that was produced with the given preset.
+    /// </summary>
+    /// <param name="preset">Compression preset the stream was created with.</param>
+    /// <returns>Memory usage in bytes, or <see cref="ulong.MaxValue"/> if the preset is invalid.</returns>
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial ulong lzma_easy_decoder_memusage(uint preset);
+
+    /// <summary>
+    /// Returns the approximate memory usage, in bytes, of a multithreaded encoder
+    /// configured with the given options.
+    /// </summary>
+    /// <param name="options">Multithreading and compression options.</param>
+    /// <returns>Memory usage in bytes, or <see cref="ulong.MaxValue"/> if the options are invalid.</returns>
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial ulong lzma_stream_encoder_mt_memusage(
+        ref LzmaMt options);
+
+    /// <summary>
+    /// Returns the current memory usage limit of a decoder.
+    /// </summary>
+    /// <param name="strm">The lzma_stream being decoded.</param>
+    /// <returns>The limit in bytes.</returns>
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial ulong lzma_memlimit_get(
+        ref LzmaStream strm);
+
+    /// <summary>
+    /// Changes the memory usage limit of a running decoder.
+    /// </summary>
+    /// <param name="strm">The lzma_stream being decoded.</param>
+    /// <param name="memlimit">The new limit in bytes. Zero is treated as 1 byte.</param>
+    /// <returns>
+    /// <see cref="LZMA_OK"/> on success, or <see cref="LZMA_MEMLIMIT_ERROR"/> if the new
+    /// limit is below what the decoder has already allocated.
+    /// </returns>
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial int lzma_memlimit_set(
+        ref LzmaStream strm,
+        ulong memlimit);
+
+    /// <summary>
+    /// Returns the number of hardware threads liblzma detects, or 0 if detection failed.
+    /// </summary>
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial uint lzma_cputhreads();
+
+    /// <summary>
+    /// Returns the total amount of physical memory in bytes, or 0 if detection failed.
+    /// </summary>
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial ulong lzma_physmem();
 
     /// <summary>
     /// Returns the runtime version of liblzma as a single integer.
@@ -410,4 +530,27 @@ public static partial class LibLzmaNativeMethods
     /// Gets the runtime version of the loaded liblzma native library as a string (e.g., <c>"5.8.3"</c>).
     /// </summary>
     public static string NativeVersionString => Marshal.PtrToStringAnsi(lzma_version_string())!;
+
+    /// <summary>
+    /// Gets the number of hardware threads liblzma detects on this machine.
+    /// </summary>
+    /// <remarks>
+    /// This is the same detection <c>xz</c> itself uses to pick a default thread count.
+    /// Returns <see cref="Environment.ProcessorCount"/> if liblzma cannot detect the
+    /// thread count on the current platform (in which case it reports 0).
+    /// </remarks>
+    public static int CpuThreads
+    {
+        get
+        {
+            uint threads = lzma_cputhreads();
+            return threads == 0 ? Environment.ProcessorCount : (int)threads;
+        }
+    }
+
+    /// <summary>
+    /// Gets the total amount of physical memory on this machine, in bytes,
+    /// or 0 if liblzma cannot detect it on the current platform.
+    /// </summary>
+    public static ulong PhysicalMemory => lzma_physmem();
 }
