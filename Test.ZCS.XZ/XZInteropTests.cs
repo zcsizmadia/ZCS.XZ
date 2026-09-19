@@ -154,6 +154,34 @@ public class XZInteropTests
         Assert.Equal(TestData, XZBuffer.Decompress(compressed));
     }
 
+    /// <summary>
+    /// A stream written with an explicit filter chain must record that chain in its block
+    /// header well enough for the xz executable to decode it unaided.
+    /// </summary>
+    [Theory]
+    [InlineData("x86 lzma2:preset=6")]
+    [InlineData("delta:dist=4 lzma2:preset=6")]
+    [InlineData("arm64 lzma2:preset=1")]
+    public void CompressWithFilters_XzDecompressed(string spec)
+    {
+        using var chain = XZFilterChain.Parse(spec);
+
+        byte[] compressed;
+        using (var ms = new MemoryStream())
+        {
+            using (var xz = new XZCompressStream(ms, new XZCompressOptions { Filters = chain }, leaveOpen: true))
+            {
+                xz.Write(TestData, 0, TestData.Length);
+            }
+            compressed = ms.ToArray();
+        }
+
+        var decompressed = RunXz("-d -c", compressed, out var exitCode);
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal(TestData, decompressed);
+    }
+
     private static byte[] CompressWithXzExecutable(byte[] data, int level, bool extreme, out int exitCode) =>
         RunXz($"-{level}{(extreme ? "e" : "")} -c --format=xz", data, out exitCode);
 

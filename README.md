@@ -18,6 +18,7 @@ A high-performance .NET library for **XZ (LZMA2) compression and decompression**
 - **Single-call buffer API** — `XZBuffer` compresses and decompresses in-memory data without the `Stream` machinery.
 - **Legacy `.lzma` output** — write the older LZMA_Alone format for tools that cannot read `.xz`.
 - **Checksums** — `XZChecksum` exposes liblzma's CRC-32 and CRC-64 implementations.
+- **Custom filter chains** — BCJ (x86, ARM64, RISC-V and more) and delta filters via `XZFilterChain`, using the `xz` command-line syntax.
 - **Concatenated streams** — supports concatenated `.xz` members (e.g., files produced by `xz --keep` with multiple appends).
 - **Cross-platform** — ships native liblzma binaries for Windows, Linux, and macOS on x64 and ARM64.
 - **Multi-targeting** — supports .NET 8, .NET 9, and .NET 10.
@@ -126,6 +127,21 @@ byte[] packed = XZBuffer.Compress("some data"u8);
 byte[] unpacked = XZBuffer.Decompress(packed);
 ```
 
+### Compress an executable with a BCJ filter
+
+```csharp
+using ZCS.XZ;
+
+// The x86 filter rewrites jump and call targets so LZMA2 can match them.
+using var filters = XZFilterChain.Parse("x86 lzma2:preset=9e");
+
+using var output = File.Create("program.xz");
+using var xz = new XZCompressStream(output, new XZCompressOptions { Filters = filters });
+xz.Write(File.ReadAllBytes("program.exe"));
+```
+
+No filter chain is needed to read it back — the `.xz` block header records the chain.
+
 ### Write the legacy `.lzma` format
 
 ```csharp
@@ -209,6 +225,7 @@ A **read-only** stream that decompresses `.xz` (or legacy `.lzma`) data from an 
 | `Threads` | `int` | `1` | Thread count. `0` = auto, `1` = single-threaded, `>1` = multi-threaded. |
 | `BufferSize` | `int` | `81920` | Internal I/O buffer size in bytes. |
 | `Format` | `XZFormat` | `Xz` | Container format to produce. |
+| `Filters` | `XZFilterChain?` | `null` | Explicit filter chain. When set, `Level` and `Extreme` are ignored. |
 
 | Method | Returns | Description |
 |---|---|---|
@@ -243,6 +260,31 @@ Pass the previous result as `seed` to build a checksum up across several calls.
 ### `XZProgress`
 
 A `readonly record struct` with `BytesIn` and `BytesOut`, returned by `XZCompressStream.GetProgress()` and `XZDecompressStream.GetProgress()`. Prefer it over the stream byte counters when using multiple threads, where in-flight work is not yet reflected in the totals.
+
+### `XZFilterChain`
+
+An explicit liblzma filter chain, parsed from the same syntax the `xz` command line uses. Putting a BCJ or delta filter in front of LZMA2 can improve the ratio dramatically on the right data. Implements `IDisposable`.
+
+| Member | Returns | Description |
+|---|---|---|
+| `Parse(string spec, bool allFilters = false)` | `XZFilterChain` | Parse a chain. Throws `ArgumentException` with the offset and liblzma's message on bad input. |
+| `Spec` | `string` | The specification it was parsed from. |
+| `ToNormalizedString(bool decoderOptions = false)` | `string` | The chain as liblzma formats it, with implicit options filled in. |
+| `GetEncoderMemoryUsage()` / `GetDecoderMemoryUsage()` | `ulong` | Estimated memory for the chain. |
+| `ListSupportedFilters(bool allFilters = false)` | `string` | What the loaded liblzma accepts. |
+
+**Syntax:** filters are separated by **spaces** (or `--`); each filter name is followed by `:` and a comma-separated option list. Commas separate options *within* one filter, not the filters themselves — `"x86,lzma2"` is a single unknown filter name, not two filters. Order matters: input flows into the leftmost filter first, and `lzma2` normally comes last.
+
+Available filters: `lzma1`, `lzma2`, `x86`, `arm`, `armthumb`, `arm64`, `riscv`, `powerpc`, `ia64`, `sparc`, `delta`. `lzma1` cannot be stored in `.xz`, so it needs `allFilters: true`.
+
+Measured on synthetic data in this repository's tests:
+
+| Data | `lzma2` alone | With filter | |
+|---|---|---|---|
+| x86 machine code | 2,004 B | 164 B | `x86 lzma2:preset=6` |
+| 32-bit counters | 20,616 B | 576 B | `delta:dist=4 lzma2:preset=6` |
+
+> **Note:** Decoding needs no filter chain — an `.xz` stream records its own chain in each block header, so `XZDecompressStream` reads filtered streams without being configured.
 
 ### `XZFormat`
 
