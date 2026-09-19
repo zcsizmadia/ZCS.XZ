@@ -230,7 +230,13 @@ public static partial class LibLzmaNativeMethods
         public IntPtr reserved_ptr2;
         public IntPtr reserved_ptr3;
         public IntPtr reserved_ptr4;
-        public ulong reserved_int1;
+
+        /// <summary>
+        /// New input position requested when <see cref="lzma_code"/> returns
+        /// <see cref="LZMA_SEEK_NEEDED"/>. Only the file-info decoder sets this.
+        /// </summary>
+        public ulong seek_pos;
+
         public ulong reserved_int2;
         public UIntPtr reserved_int3;
         public UIntPtr reserved_int4;
@@ -318,6 +324,160 @@ public static partial class LibLzmaNativeMethods
 
     /// <summary>Produce a string describing the decoder-side options.</summary>
     internal const uint LZMA_STR_DECODER = 0x20;
+
+    /// <summary>
+    /// Returned by <see cref="lzma_code"/> when the file-info decoder needs input from a
+    /// different offset, reported in <see cref="LzmaStream.seek_pos"/>. From lzma/base.h.
+    /// </summary>
+    internal const int LZMA_SEEK_NEEDED = 12;
+
+    /// <summary>
+    /// Largest integrity check field, from lzma/check.h. Sizes the raw check buffer
+    /// embedded in <see cref="LzmaBlock"/>.
+    /// </summary>
+    internal const int LZMA_CHECK_SIZE_MAX = 64;
+
+    /// <summary>
+    /// Decodes a Block Header size from the first byte of the header, mirroring the
+    /// <c>lzma_block_header_size_decode</c> macro in lzma/block.h.
+    /// </summary>
+    /// <param name="firstByte">The first byte of the Block Header.</param>
+    /// <returns>The total Block Header size in bytes.</returns>
+    internal static uint BlockHeaderSizeDecode(byte firstByte) => ((uint)firstByte + 1) * 4;
+
+    /// <summary>
+    /// Managed representation of the native lzma_stream_flags structure from
+    /// lzma/stream_flags.h. Only <see cref="check"/> is read by this library.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct LzmaStreamFlags
+    {
+        public uint version;
+        public ulong backward_size;
+        public int check;
+        public uint reserved_enum1;
+        public uint reserved_enum2;
+        public uint reserved_enum3;
+        public uint reserved_enum4;
+        public byte reserved_bool1;
+        public byte reserved_bool2;
+        public byte reserved_bool3;
+        public byte reserved_bool4;
+        public byte reserved_bool5;
+        public byte reserved_bool6;
+        public byte reserved_bool7;
+        public byte reserved_bool8;
+        public uint reserved_int1;
+        public uint reserved_int2;
+    }
+
+    /// <summary>
+    /// Managed representation of the native lzma_index_iter structure from lzma/index.h.
+    /// Must be kept in sync with that layout.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe struct LzmaIndexIter
+    {
+        // struct { ... } stream;
+        public LzmaStreamFlags* stream_flags;
+        public IntPtr stream_reserved_ptr1;
+        public IntPtr stream_reserved_ptr2;
+        public IntPtr stream_reserved_ptr3;
+        public ulong stream_number;
+        public ulong stream_block_count;
+        public ulong stream_compressed_offset;
+        public ulong stream_uncompressed_offset;
+        public ulong stream_compressed_size;
+        public ulong stream_uncompressed_size;
+        public ulong stream_padding;
+        public ulong stream_reserved_vli1;
+        public ulong stream_reserved_vli2;
+        public ulong stream_reserved_vli3;
+        public ulong stream_reserved_vli4;
+
+        // struct { ... } block;
+        public ulong block_number_in_file;
+        public ulong block_compressed_file_offset;
+        public ulong block_uncompressed_file_offset;
+        public ulong block_number_in_stream;
+        public ulong block_compressed_stream_offset;
+        public ulong block_uncompressed_stream_offset;
+        public ulong block_uncompressed_size;
+        public ulong block_unpadded_size;
+        public ulong block_total_size;
+        public ulong block_reserved_vli1;
+        public ulong block_reserved_vli2;
+        public ulong block_reserved_vli3;
+        public ulong block_reserved_vli4;
+        public IntPtr block_reserved_ptr1;
+        public IntPtr block_reserved_ptr2;
+        public IntPtr block_reserved_ptr3;
+        public IntPtr block_reserved_ptr4;
+
+        // union { const void *p; lzma_vli v; } internal[6];
+        public ulong internal0;
+        public ulong internal1;
+        public ulong internal2;
+        public ulong internal3;
+        public ulong internal4;
+        public ulong internal5;
+    }
+
+    /// <summary>
+    /// Managed representation of the native lzma_block structure from lzma/block.h.
+    /// Must be kept in sync with that layout.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal unsafe struct LzmaBlock
+    {
+        /// <summary>Structure version the caller supports.</summary>
+        public uint version;
+
+        /// <summary>Block Header size, from <see cref="BlockHeaderSizeDecode"/>.</summary>
+        public uint header_size;
+
+        /// <summary>Integrity check type, taken from the Stream Header.</summary>
+        public int check;
+
+        /// <summary>Compressed size of the block, or <see cref="LZMA_VLI_UNKNOWN"/>.</summary>
+        public ulong compressed_size;
+
+        /// <summary>Uncompressed size of the block, or <see cref="LZMA_VLI_UNKNOWN"/>.</summary>
+        public ulong uncompressed_size;
+
+        /// <summary>Filter chain; must point at an allocated array before decoding a header.</summary>
+        public LzmaFilter* filters;
+
+        /// <summary>Raw integrity check value, <see cref="LZMA_CHECK_SIZE_MAX"/> bytes.</summary>
+        public fixed byte raw_check[LZMA_CHECK_SIZE_MAX];
+
+        public IntPtr reserved_ptr1;
+        public IntPtr reserved_ptr2;
+        public IntPtr reserved_ptr3;
+        public uint reserved_int1;
+        public uint reserved_int2;
+        public ulong reserved_int3;
+        public ulong reserved_int4;
+        public ulong reserved_int5;
+        public ulong reserved_int6;
+        public ulong reserved_int7;
+        public ulong reserved_int8;
+        public uint reserved_enum1;
+        public uint reserved_enum2;
+        public uint reserved_enum3;
+        public uint reserved_enum4;
+
+        /// <summary>When non-zero, the integrity check is not verified.</summary>
+        public byte ignore_check;
+
+        public byte reserved_bool2;
+        public byte reserved_bool3;
+        public byte reserved_bool4;
+        public byte reserved_bool5;
+        public byte reserved_bool6;
+        public byte reserved_bool7;
+        public byte reserved_bool8;
+    }
 
     /// <summary>
     /// Managed representation of the native lzma_filter structure from lzma/filter.h.
@@ -497,6 +657,133 @@ public static partial class LibLzmaNativeMethods
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static partial void lzma_end(
         ref LzmaStream strm);
+
+    /// <summary>
+    /// Initializes a decoder that parses a complete .xz file's index without decompressing it.
+    /// </summary>
+    /// <remarks>
+    /// This coder drives the input rather than consuming it linearly: when it needs bytes
+    /// from elsewhere in the file it returns <see cref="LZMA_SEEK_NEEDED"/> and puts the
+    /// required offset in <see cref="LzmaStream.seek_pos"/>. It produces no output.
+    /// </remarks>
+    /// <param name="strm">The lzma_stream to initialize.</param>
+    /// <param name="dest_index">
+    /// Address of a slot that receives the parsed index, to be released with
+    /// <see cref="lzma_index_end"/>. liblzma keeps this pointer and writes through it when
+    /// decoding completes, <em>not</em> during this call, so the slot must stay alive and at
+    /// a fixed address until <see cref="lzma_code"/> returns <see cref="LZMA_STREAM_END"/>.
+    /// An <c>out</c> parameter is not safe here: it is only pinned for the duration of this
+    /// call, and the later write would land on a dead stack slot.
+    /// </param>
+    /// <param name="memlimit">Memory usage limit in bytes.</param>
+    /// <param name="file_size">Total size of the file being parsed.</param>
+    /// <returns><see cref="LZMA_OK"/> on success, or an error code.</returns>
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static unsafe partial int lzma_file_info_decoder(
+        ref LzmaStream strm,
+        IntPtr* dest_index,
+        ulong memlimit,
+        ulong file_size);
+
+    /// <summary>
+    /// Frees an index returned by <see cref="lzma_file_info_decoder"/>.
+    /// </summary>
+    /// <param name="i">The index to free.</param>
+    /// <param name="allocator">The allocator originally used, or <see cref="IntPtr.Zero"/>.</param>
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial void lzma_index_end(IntPtr i, IntPtr allocator);
+
+    /// <summary>Returns the total uncompressed size recorded in the index.</summary>
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial ulong lzma_index_uncompressed_size(IntPtr i);
+
+    /// <summary>Returns the total file size the index describes, including headers and padding.</summary>
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial ulong lzma_index_file_size(IntPtr i);
+
+    /// <summary>Returns the number of blocks across all streams.</summary>
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial ulong lzma_index_block_count(IntPtr i);
+
+    /// <summary>Returns the number of concatenated streams.</summary>
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial ulong lzma_index_stream_count(IntPtr i);
+
+    /// <summary>
+    /// Returns a bitmask of the integrity check types used, one bit per lzma_check value.
+    /// </summary>
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial uint lzma_index_checks(IntPtr i);
+
+    /// <summary>
+    /// Prepares an iterator for walking or searching an index.
+    /// </summary>
+    /// <param name="iter">The iterator to initialize.</param>
+    /// <param name="i">The index to iterate.</param>
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial void lzma_index_iter_init(ref LzmaIndexIter iter, IntPtr i);
+
+    /// <summary>
+    /// Positions the iterator on the block containing a given uncompressed offset.
+    /// </summary>
+    /// <param name="iter">The iterator to move.</param>
+    /// <param name="target">The uncompressed offset to locate.</param>
+    /// <returns>
+    /// <c>false</c> when the block was found, <c>true</c> when the offset lies at or past the
+    /// end of the uncompressed data. Note the inverted sense, which matches liblzma.
+    /// </returns>
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    [return: MarshalAs(UnmanagedType.U1)]
+    internal static partial bool lzma_index_iter_locate(ref LzmaIndexIter iter, ulong target);
+
+    /// <summary>
+    /// Computes the Block Header size field. The caller must have set
+    /// <c>compressed_size</c>, <c>uncompressed_size</c> and <c>filters</c>.
+    /// </summary>
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial int lzma_block_header_size(ref LzmaBlock block);
+
+    /// <summary>
+    /// Decodes a Block Header.
+    /// </summary>
+    /// <remarks>
+    /// Before calling, the caller must set <c>version</c>, <c>header_size</c> (from
+    /// <see cref="BlockHeaderSizeDecode"/>), <c>check</c> (from the Stream Header), and point
+    /// <c>filters</c> at an array of <see cref="LZMA_FILTERS_MAX"/> + 1 elements. Any filter
+    /// options allocated here must be released with <see cref="lzma_filters_free"/>.
+    /// </remarks>
+    /// <param name="block">The block to populate.</param>
+    /// <param name="allocator">Allocator to use, or <see cref="IntPtr.Zero"/> for malloc.</param>
+    /// <param name="in">At least <c>header_size</c> bytes of Block Header.</param>
+    /// <returns><see cref="LZMA_OK"/> on success, or an error code.</returns>
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static unsafe partial int lzma_block_header_decode(
+        ref LzmaBlock block,
+        IntPtr allocator,
+        byte* @in);
+
+    /// <summary>
+    /// Initializes a decoder for a single block, allowing decoding to start mid-file.
+    /// </summary>
+    /// <param name="strm">The lzma_stream to initialize.</param>
+    /// <param name="block">A block populated by <see cref="lzma_block_header_decode"/>.</param>
+    /// <returns><see cref="LZMA_OK"/> on success, or an error code.</returns>
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial int lzma_block_decoder(
+        ref LzmaStream strm,
+        ref LzmaBlock block);
 
     /// <summary>
     /// Initializes a single-threaded .xz encoder using an explicit filter chain.
