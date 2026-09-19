@@ -15,6 +15,9 @@ A high-performance .NET library for **XZ (LZMA2) compression and decompression**
 - **Multi-threaded compression** — optional parallel encoding via `lzma_stream_encoder_mt` with configurable thread count.
 - **Multi-threaded decompression** — optional parallel `.xz` decoding via `lzma_stream_decoder_mt`, with soft and hard memory limits.
 - **Auto-detection** — the decompressor automatically handles both `.xz` and legacy `.lzma` file formats.
+- **Single-call buffer API** — `XZBuffer` compresses and decompresses in-memory data without the `Stream` machinery.
+- **Legacy `.lzma` output** — write the older LZMA_Alone format for tools that cannot read `.xz`.
+- **Checksums** — `XZChecksum` exposes liblzma's CRC-32 and CRC-64 implementations.
 - **Concatenated streams** — supports concatenated `.xz` members (e.g., files produced by `xz --keep` with multiple appends).
 - **Cross-platform** — ships native liblzma binaries for Windows, Linux, and macOS on x64 and ARM64.
 - **Multi-targeting** — supports .NET 8, .NET 9, and .NET 10.
@@ -114,6 +117,28 @@ using var output = new MemoryStream();
 xz.CopyTo(output);
 ```
 
+### Compress a small payload in one call
+
+```csharp
+using ZCS.XZ;
+
+byte[] packed = XZBuffer.Compress("some data"u8);
+byte[] unpacked = XZBuffer.Decompress(packed);
+```
+
+### Write the legacy `.lzma` format
+
+```csharp
+using ZCS.XZ;
+
+using var output = File.Create("data.lzma");
+using var xz = new XZCompressStream(output, new XZCompressOptions
+{
+    Format = XZFormat.LzmaAlone,
+});
+xz.Write(data);
+```
+
 ### Size a memory limit before decompressing
 
 ```csharp
@@ -137,7 +162,13 @@ A **write-only** stream that compresses data and writes the `.xz` output to an u
 | `XZCompressStream(Stream, XZCompressOptions)` | Custom options, disposes the inner stream on close. |
 | `XZCompressStream(Stream, XZCompressOptions, bool leaveOpen)` | Full control over options and inner stream lifetime. |
 
+| Member | Returns | Description |
+|---|---|---|
+| `GetProgress()` | `XZProgress` | Bytes consumed and produced so far. Accurate with multiple threads, unlike the stream counters. |
+
 > **Important:** The stream **must be disposed** to finalize the `.xz` output (writes the stream footer). Failing to dispose produces a corrupt file.
+
+`Flush()` picks the encoder action that the current configuration supports: `LZMA_SYNC_FLUSH` for single-threaded `.xz`, `LZMA_FULL_FLUSH` for multi-threaded `.xz` (which also ends the current block), and no encoder action at all for `.lzma`, which cannot flush mid-stream.
 
 ### `XZDecompressStream`
 
@@ -156,6 +187,7 @@ A **read-only** stream that decompresses `.xz` (or legacy `.lzma`) data from an 
 |---|---|---|
 | `Check` | `LzmaCheck` | Integrity check type of the stream being decoded. Only meaningful after the first read. |
 | `MemoryLimit` | `ulong` | Gets or sets the decoder memory limit. Raising it after an `LZMA_MEMLIMIT_ERROR` lets the same stream continue instead of forcing a rebuild. |
+| `GetProgress()` | `XZProgress` | Bytes consumed and produced so far. Accurate with multiple threads, unlike the stream counters. |
 
 ### `XZDecompressOptions`
 
@@ -176,11 +208,50 @@ A **read-only** stream that decompresses `.xz` (or legacy `.lzma`) data from an 
 | `Extreme` | `bool` | `false` | Enable extreme mode for marginally better compression. |
 | `Threads` | `int` | `1` | Thread count. `0` = auto, `1` = single-threaded, `>1` = multi-threaded. |
 | `BufferSize` | `int` | `81920` | Internal I/O buffer size in bytes. |
+| `Format` | `XZFormat` | `Xz` | Container format to produce. |
 
 | Method | Returns | Description |
 |---|---|---|
 | `GetMemoryUsage()` | `ulong` | Estimated encoder memory usage for the current settings, accounting for `Threads`. |
 | `GetDecoderMemoryUsage()` | `ulong` | Estimated memory needed to *decode* a stream produced with these settings. Useful for choosing `XZDecompressOptions.MemoryLimit`. |
+
+### `XZBuffer`
+
+Single-call compression and decompression for data already in memory, bypassing the `Stream` machinery. Output is an ordinary `.xz` stream.
+
+| Method | Returns | Description |
+|---|---|---|
+| `Compress(ReadOnlySpan<byte>, XZCompressOptions?)` | `byte[]` | Compress into a new array. |
+| `Compress(ReadOnlySpan<byte>, Span<byte>, XZCompressOptions?)` | `int` | Compress into a caller-supplied buffer; returns bytes written. |
+| `Decompress(ReadOnlySpan<byte>, ulong memoryLimit)` | `byte[]` | Decompress into a new array, growing the buffer as needed. |
+| `Decompress(ReadOnlySpan<byte>, Span<byte>, ulong memoryLimit)` | `int` | Decompress into a caller-supplied buffer; returns bytes written. |
+| `GetMaxCompressedLength(int)` | `int` | Worst-case compressed size, for sizing an output buffer. |
+
+> **Note:** Compression here is always single-threaded `.xz`. `XZCompressOptions.Threads`, `BufferSize`, and `Format` do not apply — use `XZCompressStream` when those matter.
+
+### `XZChecksum`
+
+The checksum functions liblzma uses for `.xz` integrity checks, including its hardware-accelerated paths. `Crc64` has no equivalent in the base class library.
+
+| Method | Returns | Description |
+|---|---|---|
+| `Crc32(ReadOnlySpan<byte>, uint seed = 0)` | `uint` | CRC-32 (IEEE 802.3). |
+| `Crc64(ReadOnlySpan<byte>, ulong seed = 0)` | `ulong` | CRC-64 (ECMA-182). |
+
+Pass the previous result as `seed` to build a checksum up across several calls.
+
+### `XZProgress`
+
+A `readonly record struct` with `BytesIn` and `BytesOut`, returned by `XZCompressStream.GetProgress()` and `XZDecompressStream.GetProgress()`. Prefer it over the stream byte counters when using multiple threads, where in-flight work is not yet reflected in the totals.
+
+### `XZFormat`
+
+| Value | Description |
+|---|---|
+| `Xz` | The modern `.xz` format. Supports integrity checks, multithreading, and concatenated streams. Default. |
+| `LzmaAlone` | The legacy `.lzma` format, for interoperability with tools that cannot read `.xz`. |
+
+> **Note:** `LzmaAlone` carries no integrity check, cannot be encoded with more than one thread (this throws), and cannot flush mid-stream — `Flush()` only forwards to the underlying stream.
 
 ### `XZCompressionLevel`
 
