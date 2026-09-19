@@ -9,7 +9,7 @@
 /// The default settings produce a single-threaded encoder at level 6 (the liblzma default).
 /// Set <see cref="Threads"/> to a value greater than 1 to enable multithreaded encoding via
 /// <c>lzma_stream_encoder_mt</c>, or set it to 0 to auto-detect based on
-/// <see cref="Environment.ProcessorCount"/>.
+/// <see cref="LibLzmaNativeMethods.CpuThreads"/>.
 /// </para>
 /// </remarks>
 public sealed class XZCompressOptions
@@ -32,7 +32,7 @@ public sealed class XZCompressOptions
     /// </summary>
     /// <value>
     /// <list type="bullet">
-    ///   <item><description><c>0</c> — auto-detect (uses <see cref="Environment.ProcessorCount"/>).</description></item>
+    ///   <item><description><c>0</c> — auto-detect (uses <see cref="LibLzmaNativeMethods.CpuThreads"/>).</description></item>
     ///   <item><description><c>1</c> — single-threaded (uses <c>lzma_easy_encoder</c>).</description></item>
     ///   <item><description><c>&gt;1</c> — multithreaded (uses <c>lzma_stream_encoder_mt</c>).</description></item>
     /// </list>
@@ -65,15 +65,72 @@ public sealed class XZCompressOptions
 
     /// <summary>
     /// Resolves the effective thread count. If <see cref="Threads"/> is 0 or negative,
-    /// returns <see cref="Environment.ProcessorCount"/>; otherwise returns <see cref="Threads"/>.
+    /// returns <see cref="LibLzmaNativeMethods.CpuThreads"/>; otherwise returns <see cref="Threads"/>.
     /// </summary>
     /// <returns>The effective number of threads to use for encoding.</returns>
     internal int GetThreadCount()
     {
         if (Threads <= 0)
         {
-            return Environment.ProcessorCount;
+            return LibLzmaNativeMethods.CpuThreads;
         }
         return Threads;
     }
+
+    /// <summary>
+    /// Builds the native multithreading options struct for this configuration.
+    /// </summary>
+    /// <returns>An <c>lzma_mt</c> struct ready for the multithreaded encoder.</returns>
+    internal LibLzmaNativeMethods.LzmaMt CreateMtOptions() => new()
+    {
+        threads = (uint)GetThreadCount(),
+        preset = GetPreset(),
+        check = LibLzmaNativeMethods.LZMA_CHECK_CRC64,
+    };
+
+    /// <summary>
+    /// Estimates how much memory the encoder will use with the current settings.
+    /// </summary>
+    /// <remarks>
+    /// The estimate accounts for <see cref="Threads"/>: single-threaded configurations are
+    /// measured against <c>lzma_easy_encoder_memusage</c>, multithreaded ones against
+    /// <c>lzma_stream_encoder_mt_memusage</c>. It does not include <see cref="BufferSize"/>,
+    /// which is a managed allocation.
+    /// </remarks>
+    /// <returns>
+    /// The approximate encoder memory usage in bytes, or <see cref="ulong.MaxValue"/>
+    /// if liblzma considers the current settings invalid.
+    /// </returns>
+    /// <example>
+    /// <code>
+    /// var options = new XZCompressOptions { Level = XZCompressionLevel.Maximum };
+    /// Console.WriteLine($"{options.GetMemoryUsage() / (1024 * 1024)} MiB");
+    /// </code>
+    /// </example>
+    public ulong GetMemoryUsage()
+    {
+        if (GetThreadCount() > 1)
+        {
+            var mt = CreateMtOptions();
+            return LibLzmaNativeMethods.lzma_stream_encoder_mt_memusage(ref mt);
+        }
+
+        return LibLzmaNativeMethods.lzma_easy_encoder_memusage(GetPreset());
+    }
+
+    /// <summary>
+    /// Estimates how much memory a decoder will need to read a stream produced with
+    /// the current <see cref="Level"/> and <see cref="Extreme"/> settings.
+    /// </summary>
+    /// <remarks>
+    /// Decoder memory usage depends only on the preset the data was compressed with,
+    /// not on the thread count, so <see cref="Threads"/> does not affect this value.
+    /// It is useful for choosing a memory limit to pass to <see cref="XZDecompressStream"/>.
+    /// </remarks>
+    /// <returns>
+    /// The approximate decoder memory usage in bytes, or <see cref="ulong.MaxValue"/>
+    /// if liblzma considers the current settings invalid.
+    /// </returns>
+    public ulong GetDecoderMemoryUsage()
+        => LibLzmaNativeMethods.lzma_easy_decoder_memusage(GetPreset());
 }

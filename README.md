@@ -13,6 +13,7 @@ A high-performance .NET library for **XZ (LZMA2) compression and decompression**
 - **Streaming API** — standard `System.IO.Stream`-based compress/decompress, compatible with `CopyTo`, `ReadAsync`, pipelines, etc.
 - **Zero-copy writes** — the compressor pins the caller's buffer directly via `unsafe fixed`, eliminating intermediate copies on the write path.
 - **Multi-threaded compression** — optional parallel encoding via `lzma_stream_encoder_mt` with configurable thread count.
+- **Multi-threaded decompression** — optional parallel `.xz` decoding via `lzma_stream_decoder_mt`, with soft and hard memory limits.
 - **Auto-detection** — the decompressor automatically handles both `.xz` and legacy `.lzma` file formats.
 - **Concatenated streams** — supports concatenated `.xz` members (e.g., files produced by `xz --keep` with multiple appends).
 - **Cross-platform** — ships native liblzma binaries for Windows, Linux, and macOS on x64 and ARM64.
@@ -97,6 +98,33 @@ using var output = new MemoryStream();
 xz.CopyTo(output);
 ```
 
+### Decompress with multiple threads
+
+Threaded decoding handles `.xz` only — see the note under [`XZDecompressOptions`](#xzdecompressoptions).
+
+```csharp
+using ZCS.XZ;
+
+using var input = File.OpenRead("data.xz");
+using var xz = new XZDecompressStream(input, new XZDecompressOptions
+{
+    Threads = 0, // auto-detect, uses LibLzmaNativeMethods.CpuThreads
+}, leaveOpen: false);
+using var output = new MemoryStream();
+xz.CopyTo(output);
+```
+
+### Size a memory limit before decompressing
+
+```csharp
+using ZCS.XZ;
+
+var options = new XZCompressOptions { Level = XZCompressionLevel.Maximum };
+
+Console.WriteLine($"Encoding needs ~{options.GetMemoryUsage() / (1024 * 1024)} MiB");
+Console.WriteLine($"Decoding needs ~{options.GetDecoderMemoryUsage() / (1024 * 1024)} MiB");
+```
+
 ## API Reference
 
 ### `XZCompressStream`
@@ -122,6 +150,23 @@ A **read-only** stream that decompresses `.xz` (or legacy `.lzma`) data from an 
 | `XZDecompressStream(Stream, ulong memoryLimit, bool leaveOpen)` | Set a decoder memory limit. |
 | `XZDecompressStream(Stream, int bufferSize, bool leaveOpen)` | Custom internal buffer size. |
 | `XZDecompressStream(Stream, ulong memoryLimit, int bufferSize, bool leaveOpen)` | Full control. |
+| `XZDecompressStream(Stream, XZDecompressOptions, bool leaveOpen)` | Full control, including threaded decoding. |
+
+| Property | Type | Description |
+|---|---|---|
+| `Check` | `LzmaCheck` | Integrity check type of the stream being decoded. Only meaningful after the first read. |
+| `MemoryLimit` | `ulong` | Gets or sets the decoder memory limit. Raising it after an `LZMA_MEMLIMIT_ERROR` lets the same stream continue instead of forcing a rebuild. |
+
+### `XZDecompressOptions`
+
+| Property | Type | Default | Description |
+|---|---|---|---|
+| `Threads` | `int` | `1` | Thread count. `0` = auto, `1` = single-threaded, `>1` = multi-threaded. |
+| `MemoryLimit` | `ulong` | `ulong.MaxValue` | Hard memory limit. Decoding fails with `LZMA_MEMLIMIT_ERROR` if exceeded. |
+| `MemoryLimitThreading` | `ulong` | `0` (= physical memory / 4) | Soft limit that reduces the thread count rather than failing. |
+| `BufferSize` | `int` | `81920` | Internal I/O buffer size in bytes. |
+
+> **Important:** Threaded decoding (`Threads > 1`) handles the **`.xz` format only**. It does not auto-detect legacy `.lzma` or `.lz` input the way the single-threaded path does. Parallelism also requires block headers carrying compressed and uncompressed sizes, which only the multi-threaded encoder writes — other streams decode single-threaded regardless of this setting.
 
 ### `XZCompressOptions`
 
@@ -131,6 +176,11 @@ A **read-only** stream that decompresses `.xz` (or legacy `.lzma`) data from an 
 | `Extreme` | `bool` | `false` | Enable extreme mode for marginally better compression. |
 | `Threads` | `int` | `1` | Thread count. `0` = auto, `1` = single-threaded, `>1` = multi-threaded. |
 | `BufferSize` | `int` | `81920` | Internal I/O buffer size in bytes. |
+
+| Method | Returns | Description |
+|---|---|---|
+| `GetMemoryUsage()` | `ulong` | Estimated encoder memory usage for the current settings, accounting for `Threads`. |
+| `GetDecoderMemoryUsage()` | `ulong` | Estimated memory needed to *decode* a stream produced with these settings. Useful for choosing `XZDecompressOptions.MemoryLimit`. |
 
 ### `XZCompressionLevel`
 
@@ -150,6 +200,17 @@ Thrown when liblzma returns an error. The `LzmaReturnCode` property contains the
 ### `LzmaCheck`
 
 Enum for integrity check types: `None`, `Crc32`, `Crc64`, `Sha256`.
+
+### `LibLzmaNativeMethods`
+
+Runtime information about the loaded native library.
+
+| Member | Type | Description |
+|---|---|---|
+| `NativeVersion` | `Version` | Runtime liblzma version, e.g. `5.8.4`. |
+| `NativeVersionString` | `string` | Runtime liblzma version as a string. |
+| `CpuThreads` | `int` | Hardware thread count as liblzma detects it — the same value `xz` uses to pick its default. Falls back to `Environment.ProcessorCount` if liblzma cannot detect it. |
+| `PhysicalMemory` | `ulong` | Total physical memory in bytes, or `0` if liblzma cannot detect it. |
 
 ## Supported Platforms
 

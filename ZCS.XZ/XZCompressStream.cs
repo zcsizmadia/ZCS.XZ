@@ -103,12 +103,7 @@ public sealed class XZCompressStream : Stream
 
         if (threadCount > 1)
         {
-            var mt = new LzmaMt
-            {
-                threads = (uint)threadCount,
-                preset = preset,
-                check = LZMA_CHECK_CRC64,
-            };
+            var mt = options.CreateMtOptions();
             ret = lzma_stream_encoder_mt(ref _lzmaStream, ref mt);
         }
         else
