@@ -38,7 +38,7 @@ public class XZVersionTests
         {
             // TODO:
             // !!! On macOS, liblzma reports 5.4.3, which is incorrect. It is a false alarm,
-            // !!! vcpkg correctly builds and links against 5.8.3, but the version reporting in the library is wrong.
+            // !!! vcpkg correctly builds and links against 5.8.4, but the version reporting in the library is wrong.
             // !!! Remove this workaround and enable the test once the issue is resolved in the library.
             return;
         }
