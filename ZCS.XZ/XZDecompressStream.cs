@@ -238,6 +238,23 @@ public sealed class XZDecompressStream : Stream
     }
 
     /// <summary>
+    /// Returns how much data the decoder has processed so far.
+    /// </summary>
+    /// <remarks>
+    /// Prefer this over the stream byte counters when <see cref="XZDecompressOptions.Threads"/>
+    /// is above 1: with multiple threads, work in flight is not yet reflected in the totals,
+    /// so those counters understate progress.
+    /// </remarks>
+    /// <returns>The bytes read from the underlying stream and decoded for the caller.</returns>
+    /// <exception cref="ObjectDisposedException">The stream has been disposed.</exception>
+    public XZProgress GetProgress()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        lzma_get_progress(ref _lzmaStream, out ulong progressIn, out ulong progressOut);
+        return new XZProgress(progressIn, progressOut);
+    }
+
+    /// <summary>
     /// Gets or sets the decoder's memory usage limit, in bytes.
     /// </summary>
     /// <remarks>

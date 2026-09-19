@@ -160,6 +160,9 @@ public static partial class LibLzmaNativeMethods
     // lzma_check values from lzma/check.h
     // ──────────────────────────────────────────────
 
+    /// <summary>No integrity check. The only check type the legacy .lzma format supports.</summary>
+    internal const int LZMA_CHECK_NONE = 0;
+
     /// <summary>CRC64 integrity check using the ECMA-182 polynomial.</summary>
     internal const int LZMA_CHECK_CRC64 = 4;
 
@@ -296,6 +299,68 @@ public static partial class LibLzmaNativeMethods
         public IntPtr reserved_ptr4;
     }
 
+    /// <summary>
+    /// Managed representation of the native lzma_options_lzma structure from lzma/lzma12.h.
+    /// Used with <see cref="lzma_alone_encoder"/> to configure legacy .lzma encoding.
+    /// Populate it with <see cref="lzma_lzma_preset"/> rather than by hand.
+    /// Must be kept in sync with the layout defined in lzma/lzma12.h.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct LzmaOptionsLzma
+    {
+        /// <summary>Dictionary size in bytes.</summary>
+        public uint dict_size;
+
+        /// <summary>Pointer to a preset dictionary (unused, set to <see cref="IntPtr.Zero"/>).</summary>
+        public IntPtr preset_dict;
+
+        /// <summary>Size of the preset dictionary.</summary>
+        public uint preset_dict_size;
+
+        /// <summary>Number of literal context bits.</summary>
+        public uint lc;
+
+        /// <summary>Number of literal position bits.</summary>
+        public uint lp;
+
+        /// <summary>Number of position bits.</summary>
+        public uint pb;
+
+        /// <summary>Compression mode (lzma_mode).</summary>
+        public uint mode;
+
+        /// <summary>Nice length of a match.</summary>
+        public uint nice_len;
+
+        /// <summary>Match finder ID (lzma_match_finder).</summary>
+        public uint mf;
+
+        /// <summary>Match finder cycles.</summary>
+        public uint depth;
+
+        /// <summary>Extended flags.</summary>
+        public uint ext_flags;
+
+        /// <summary>Low 32 bits of the extended uncompressed size.</summary>
+        public uint ext_size_low;
+
+        /// <summary>High 32 bits of the extended uncompressed size.</summary>
+        public uint ext_size_high;
+
+        // Reserved fields for future use by liblzma.
+        public uint reserved_int4;
+        public uint reserved_int5;
+        public uint reserved_int6;
+        public uint reserved_int7;
+        public uint reserved_int8;
+        public uint reserved_enum1;
+        public uint reserved_enum2;
+        public uint reserved_enum3;
+        public uint reserved_enum4;
+        public IntPtr reserved_ptr1;
+        public IntPtr reserved_ptr2;
+    }
+
     // ──────────────────────────────────────────────
     // P/Invoke declarations
     // ──────────────────────────────────────────────
@@ -397,6 +462,146 @@ public static partial class LibLzmaNativeMethods
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static partial void lzma_end(
         ref LzmaStream strm);
+
+    /// <summary>
+    /// Initializes an encoder for the legacy .lzma (LZMA_Alone) format.
+    /// </summary>
+    /// <remarks>
+    /// The .lzma format carries no integrity check and supports neither multithreading
+    /// nor <see cref="LZMA_SYNC_FLUSH"/>; the encoder accepts only <see cref="LZMA_RUN"/>
+    /// and <see cref="LZMA_FINISH"/>.
+    /// </remarks>
+    /// <param name="strm">The lzma_stream to initialize.</param>
+    /// <param name="options">LZMA1 options, normally filled by <see cref="lzma_lzma_preset"/>.</param>
+    /// <returns><see cref="LZMA_OK"/> on success, or an error code.</returns>
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial int lzma_alone_encoder(
+        ref LzmaStream strm,
+        ref LzmaOptionsLzma options);
+
+    /// <summary>
+    /// Fills <paramref name="options"/> with the settings for the given preset.
+    /// </summary>
+    /// <param name="options">The options struct to populate.</param>
+    /// <param name="preset">Compression preset (0–9, optionally OR'd with the extreme flag).</param>
+    /// <returns>
+    /// <c>true</c> if the preset is <em>not</em> supported (failure), <c>false</c> on success.
+    /// Note the inverted sense, which matches liblzma.
+    /// </returns>
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    [return: MarshalAs(UnmanagedType.U1)]
+    internal static partial bool lzma_lzma_preset(
+        ref LzmaOptionsLzma options,
+        uint preset);
+
+    /// <summary>
+    /// Reports the progress of an encoder or decoder.
+    /// </summary>
+    /// <remarks>
+    /// Unlike <c>total_in</c>/<c>total_out</c> on the stream, this is accurate for the
+    /// multithreaded coders, where work is buffered across threads.
+    /// </remarks>
+    /// <param name="strm">The lzma_stream to query.</param>
+    /// <param name="progress_in">Receives the number of input bytes processed.</param>
+    /// <param name="progress_out">Receives the number of output bytes processed.</param>
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial void lzma_get_progress(
+        ref LzmaStream strm,
+        out ulong progress_in,
+        out ulong progress_out);
+
+    /// <summary>
+    /// Compresses a buffer into a complete .xz stream in a single call.
+    /// </summary>
+    /// <param name="preset">Compression preset.</param>
+    /// <param name="check">Integrity check type.</param>
+    /// <param name="allocator">Custom allocator (unused, pass <see cref="IntPtr.Zero"/>).</param>
+    /// <param name="in">Pointer to the input buffer.</param>
+    /// <param name="in_size">Number of input bytes.</param>
+    /// <param name="out">Pointer to the output buffer.</param>
+    /// <param name="out_pos">On input the write offset, on output the number of bytes written.</param>
+    /// <param name="out_size">Capacity of the output buffer.</param>
+    /// <returns><see cref="LZMA_OK"/> on success, or an error code.</returns>
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static unsafe partial int lzma_easy_buffer_encode(
+        uint preset,
+        int check,
+        IntPtr allocator,
+        byte* @in,
+        nuint in_size,
+        byte* @out,
+        ref nuint out_pos,
+        nuint out_size);
+
+    /// <summary>
+    /// Decompresses a complete .xz stream from a buffer in a single call.
+    /// </summary>
+    /// <param name="memlimit">On input the memory limit, updated by liblzma as needed.</param>
+    /// <param name="flags">Decoder flags.</param>
+    /// <param name="allocator">Custom allocator (unused, pass <see cref="IntPtr.Zero"/>).</param>
+    /// <param name="in">Pointer to the input buffer.</param>
+    /// <param name="in_pos">On input the read offset, on output the number of bytes consumed.</param>
+    /// <param name="in_size">Number of input bytes available.</param>
+    /// <param name="out">Pointer to the output buffer.</param>
+    /// <param name="out_pos">On input the write offset, on output the number of bytes written.</param>
+    /// <param name="out_size">Capacity of the output buffer.</param>
+    /// <returns>
+    /// <see cref="LZMA_OK"/> on success, <see cref="LZMA_BUF_ERROR"/> if the output buffer
+    /// is too small, or another error code.
+    /// </returns>
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static unsafe partial int lzma_stream_buffer_decode(
+        ref ulong memlimit,
+        uint flags,
+        IntPtr allocator,
+        byte* @in,
+        ref nuint in_pos,
+        nuint in_size,
+        byte* @out,
+        ref nuint out_pos,
+        nuint out_size);
+
+    /// <summary>
+    /// Returns the worst-case .xz output size for the given uncompressed size.
+    /// </summary>
+    /// <param name="uncompressed_size">The uncompressed size in bytes.</param>
+    /// <returns>The maximum compressed size, or 0 if the result would overflow.</returns>
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial nuint lzma_stream_buffer_bound(nuint uncompressed_size);
+
+    /// <summary>
+    /// Computes a CRC32 checksum using the IEEE 802.3 polynomial.
+    /// </summary>
+    /// <param name="buf">Pointer to the data.</param>
+    /// <param name="size">Number of bytes.</param>
+    /// <param name="crc">The running CRC to continue from.</param>
+    /// <returns>The updated CRC32 value.</returns>
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static unsafe partial uint lzma_crc32(
+        byte* buf,
+        nuint size,
+        uint crc);
+
+    /// <summary>
+    /// Computes a CRC64 checksum using the ECMA-182 polynomial.
+    /// </summary>
+    /// <param name="buf">Pointer to the data.</param>
+    /// <param name="size">Number of bytes.</param>
+    /// <param name="crc">The running CRC to continue from.</param>
+    /// <returns>The updated CRC64 value.</returns>
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static unsafe partial ulong lzma_crc64(
+        byte* buf,
+        nuint size,
+        ulong crc);
 
     /// <summary>
     /// Returns the integrity check type of the .xz stream currently being decoded.

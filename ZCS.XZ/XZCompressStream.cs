@@ -40,6 +40,14 @@ public sealed class XZCompressStream : Stream
     private readonly Stream _innerStream;
     private readonly bool _leaveOpen;
     private readonly byte[] _outputBuffer;
+
+    /// <summary>
+    /// The lzma_action this encoder accepts for a mid-stream flush, or <c>null</c> when the
+    /// encoder supports no flush action at all. Encoders reject unsupported actions with
+    /// <see cref="LZMA_PROG_ERROR"/>, so this must match how the encoder was initialized.
+    /// </summary>
+    private readonly int? _flushAction;
+
     private LzmaStream _lzmaStream;
     private GCHandle _outputHandle;
     private bool _disposed;
@@ -101,14 +109,42 @@ public sealed class XZCompressStream : Stream
         int threadCount = options.GetThreadCount();
         uint preset = options.GetPreset();
 
-        if (threadCount > 1)
+        if (options.Format == XZFormat.LzmaAlone)
+        {
+            if (options.Threads > 1)
+            {
+                throw new ArgumentException(
+                    "The legacy .lzma format cannot be encoded with more than one thread.",
+                    nameof(options));
+            }
+
+            var lzmaOptions = default(LzmaOptionsLzma);
+            if (lzma_lzma_preset(ref lzmaOptions, preset))
+            {
+                // liblzma inverts the usual sense here: true means the preset is unsupported.
+                throw new XZException(LZMA_OPTIONS_ERROR,
+                    $"liblzma rejected compression preset {preset}.");
+            }
+
+            ret = lzma_alone_encoder(ref _lzmaStream, ref lzmaOptions);
+
+            // The .lzma encoder accepts only LZMA_RUN and LZMA_FINISH.
+            _flushAction = null;
+        }
+        else if (threadCount > 1)
         {
             var mt = options.CreateMtOptions();
             ret = lzma_stream_encoder_mt(ref _lzmaStream, ref mt);
+
+            // The threaded encoder does not enable LZMA_SYNC_FLUSH; LZMA_FULL_FLUSH is
+            // the supported equivalent. It closes the current block, which costs a little
+            // compression ratio but is the only mid-stream flush this encoder allows.
+            _flushAction = LZMA_FULL_FLUSH;
         }
         else
         {
             ret = lzma_easy_encoder(ref _lzmaStream, preset, LZMA_CHECK_CRC64);
+            _flushAction = LZMA_SYNC_FLUSH;
         }
 
         ThrowIfLzmaInitError(ret);
@@ -229,16 +265,49 @@ public sealed class XZCompressStream : Stream
     }
 
     /// <summary>
-    /// Flushes any buffered compressed data to the underlying stream using <c>LZMA_SYNC_FLUSH</c>.
-    /// This ensures all input written so far is available in the output, at the cost of a
-    /// slightly reduced compression ratio.
+    /// Flushes any buffered compressed data to the underlying stream, so that all input
+    /// written so far is available in the output, at the cost of a slightly reduced
+    /// compression ratio.
     /// </summary>
+    /// <remarks>
+    /// The encoder action depends on the configuration, because each encoder accepts a
+    /// different set:
+    /// <list type="bullet">
+    ///   <item><description>Single-threaded <c>.xz</c> — <c>LZMA_SYNC_FLUSH</c>.</description></item>
+    ///   <item><description>Multithreaded <c>.xz</c> — <c>LZMA_FULL_FLUSH</c>, which also ends the current block.</description></item>
+    ///   <item><description>Legacy <c>.lzma</c> — no encoder flush is possible, so this only flushes the underlying stream.</description></item>
+    /// </list>
+    /// </remarks>
     /// <exception cref="ObjectDisposedException">The stream has been disposed.</exception>
     public override void Flush()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        FlushEncoder(LZMA_SYNC_FLUSH);
+
+        // Which action is legal depends on how the encoder was initialized; passing an
+        // unsupported one makes liblzma return LZMA_PROG_ERROR.
+        if (_flushAction is int action)
+        {
+            FlushEncoder(action);
+        }
+
         _innerStream.Flush();
+    }
+
+    /// <summary>
+    /// Returns how much data the encoder has processed so far.
+    /// </summary>
+    /// <remarks>
+    /// Prefer this over the stream byte counters when <see cref="XZCompressOptions.Threads"/>
+    /// is above 1: with multiple threads, work in flight is not yet reflected in the totals,
+    /// so those counters understate progress.
+    /// </remarks>
+    /// <returns>The bytes read from the caller and written to the underlying stream.</returns>
+    /// <exception cref="ObjectDisposedException">The stream has been disposed.</exception>
+    public XZProgress GetProgress()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        lzma_get_progress(ref _lzmaStream, out ulong progressIn, out ulong progressOut);
+        return new XZProgress(progressIn, progressOut);
     }
 
     /// <summary>

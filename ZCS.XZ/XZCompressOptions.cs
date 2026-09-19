@@ -48,6 +48,16 @@ public sealed class XZCompressOptions
     public int BufferSize { get; set; } = 81920;
 
     /// <summary>
+    /// Gets or sets the container format to produce. Default is <see cref="XZFormat.Xz"/>.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="XZFormat.LzmaAlone"/> writes the legacy <c>.lzma</c> format, which supports
+    /// neither multithreading nor integrity checks. Combining it with
+    /// <see cref="Threads"/> greater than 1 is rejected when the stream is constructed.
+    /// </remarks>
+    public XZFormat Format { get; set; } = XZFormat.Xz;
+
+    /// <summary>
     /// Computes the liblzma preset value from <see cref="Level"/> and <see cref="Extreme"/>.
     /// When <see cref="Extreme"/> is <c>true</c>, the <c>LZMA_PRESET_EXTREME</c> flag is OR'd
     /// into the preset.

@@ -102,6 +102,58 @@ public class XZInteropTests
         Assert.Equal(Array.Empty<byte>(), captured);
     }
 
+    /// <summary>
+    /// Compress with the legacy .lzma encoder, then decompress with the system xz
+    /// executable to confirm the output is a real LZMA_Alone file and not just
+    /// something this library happens to be able to read back.
+    /// </summary>
+    [Fact]
+    public void CompressLzmaAlone_XzDecompressed()
+    {
+        var opts = new XZCompressOptions { Format = XZFormat.LzmaAlone };
+
+        byte[] compressed;
+        using (var ms = new MemoryStream())
+        {
+            using (var xz = new XZCompressStream(ms, opts, leaveOpen: true))
+            {
+                xz.Write(TestData, 0, TestData.Length);
+            }
+            compressed = ms.ToArray();
+        }
+
+        var decompressed = RunXz("-d -c --format=lzma", compressed, out var exitCode);
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal(TestData, decompressed);
+    }
+
+    /// <summary>
+    /// The single-call buffer encoder must produce a stream the xz executable accepts.
+    /// </summary>
+    [Fact]
+    public void CompressBuffer_XzDecompressed()
+    {
+        byte[] compressed = XZBuffer.Compress(TestData);
+
+        var decompressed = RunXz("-d -c", compressed, out var exitCode);
+
+        Assert.Equal(0, exitCode);
+        Assert.Equal(TestData, decompressed);
+    }
+
+    /// <summary>
+    /// The single-call buffer decoder must read what the xz executable produces.
+    /// </summary>
+    [Fact]
+    public void DecompressBuffer_XzCompressed()
+    {
+        var compressed = CompressWithXzExecutable(TestData, 6, extreme: false, out var exitCode);
+        Assert.Equal(0, exitCode);
+
+        Assert.Equal(TestData, XZBuffer.Decompress(compressed));
+    }
+
     private static byte[] CompressWithXzExecutable(byte[] data, int level, bool extreme, out int exitCode) =>
         RunXz($"-{level}{(extreme ? "e" : "")} -c --format=xz", data, out exitCode);
 
