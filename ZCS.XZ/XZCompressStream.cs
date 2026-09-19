@@ -118,6 +118,13 @@ public sealed class XZCompressStream : Stream
                     nameof(options));
             }
 
+            if (options.Filters is not null)
+            {
+                throw new ArgumentException(
+                    "The legacy .lzma format cannot record a filter chain; use XZFormat.Xz.",
+                    nameof(options));
+            }
+
             var lzmaOptions = default(LzmaOptionsLzma);
             if (lzma_lzma_preset(ref lzmaOptions, preset))
             {
@@ -140,6 +147,16 @@ public sealed class XZCompressStream : Stream
             // the supported equivalent. It closes the current block, which costs a little
             // compression ratio but is the only mid-stream flush this encoder allows.
             _flushAction = LZMA_FULL_FLUSH;
+        }
+        else if (options.Filters is not null)
+        {
+            // liblzma copies the chain during init, so the caller may dispose it afterwards.
+            unsafe
+            {
+                ret = lzma_stream_encoder(ref _lzmaStream, options.Filters.Handle, LZMA_CHECK_CRC64);
+            }
+
+            _flushAction = LZMA_SYNC_FLUSH;
         }
         else
         {

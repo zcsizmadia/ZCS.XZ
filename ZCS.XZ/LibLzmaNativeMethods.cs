@@ -300,6 +300,41 @@ public static partial class LibLzmaNativeMethods
     }
 
     /// <summary>
+    /// Maximum number of filters in a chain, from lzma/filter.h. A filter array must have
+    /// room for one more element than this, for the terminator.
+    /// </summary>
+    internal const int LZMA_FILTERS_MAX = 4;
+
+    /// <summary>
+    /// Sentinel value marking the end of a filter array, from lzma/vli.h.
+    /// </summary>
+    internal const ulong LZMA_VLI_UNKNOWN = ulong.MaxValue;
+
+    /// <summary>Include filters that are not supported in the .xz format.</summary>
+    internal const uint LZMA_STR_ALL_FILTERS = 0x01;
+
+    /// <summary>Produce a string describing the encoder-side options.</summary>
+    internal const uint LZMA_STR_ENCODER = 0x10;
+
+    /// <summary>Produce a string describing the decoder-side options.</summary>
+    internal const uint LZMA_STR_DECODER = 0x20;
+
+    /// <summary>
+    /// Managed representation of the native lzma_filter structure from lzma/filter.h.
+    /// An array of these describes a filter chain, terminated by an entry whose
+    /// <see cref="id"/> is <see cref="LZMA_VLI_UNKNOWN"/>.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct LzmaFilter
+    {
+        /// <summary>The filter ID, or <see cref="LZMA_VLI_UNKNOWN"/> to terminate the array.</summary>
+        public ulong id;
+
+        /// <summary>Pointer to the filter-specific options struct, allocated by liblzma.</summary>
+        public IntPtr options;
+    }
+
+    /// <summary>
     /// Managed representation of the native lzma_options_lzma structure from lzma/lzma12.h.
     /// Used with <see cref="lzma_alone_encoder"/> to configure legacy .lzma encoding.
     /// Populate it with <see cref="lzma_lzma_preset"/> rather than by hand.
@@ -462,6 +497,123 @@ public static partial class LibLzmaNativeMethods
     [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
     internal static partial void lzma_end(
         ref LzmaStream strm);
+
+    /// <summary>
+    /// Initializes a single-threaded .xz encoder using an explicit filter chain.
+    /// </summary>
+    /// <remarks>
+    /// This is the filter-chain counterpart to <see cref="lzma_easy_encoder"/>, which can
+    /// only express a preset. liblzma copies the chain during initialization, so the array
+    /// need only stay valid for the duration of this call.
+    /// </remarks>
+    /// <param name="strm">The lzma_stream to initialize.</param>
+    /// <param name="filters">The filter chain, terminated by <see cref="LZMA_VLI_UNKNOWN"/>.</param>
+    /// <param name="check">Integrity check type.</param>
+    /// <returns><see cref="LZMA_OK"/> on success, or an error code.</returns>
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static unsafe partial int lzma_stream_encoder(
+        ref LzmaStream strm,
+        LzmaFilter* filters,
+        int check);
+
+    /// <summary>
+    /// Parses a human-readable filter chain string, such as <c>"x86 lzma2:preset=9e"</c>.
+    /// </summary>
+    /// <param name="str">The filter chain specification.</param>
+    /// <param name="error_pos">On failure, the offset in <paramref name="str"/> of the problem.</param>
+    /// <param name="filters">
+    /// An array of at least <see cref="LZMA_FILTERS_MAX"/> + 1 elements to populate. The
+    /// options each entry points at are allocated with <paramref name="allocator"/> and must
+    /// be released with <see cref="lzma_filters_free"/>.
+    /// </param>
+    /// <param name="flags">Parsing flags, such as <see cref="LZMA_STR_ALL_FILTERS"/>.</param>
+    /// <param name="allocator">Allocator to use, or <see cref="IntPtr.Zero"/> for malloc.</param>
+    /// <returns>
+    /// <see cref="IntPtr.Zero"/> on success. On failure, a pointer to a statically allocated
+    /// error message, which must <em>not</em> be freed. Note this function reports errors by
+    /// returning a string rather than an <c>lzma_ret</c>.
+    /// </returns>
+    [LibraryImport(LibLzma, StringMarshalling = StringMarshalling.Utf8)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static unsafe partial IntPtr lzma_str_to_filters(
+        string str,
+        out int error_pos,
+        LzmaFilter* filters,
+        uint flags,
+        IntPtr allocator);
+
+    /// <summary>
+    /// Converts a filter chain back into its human-readable string form.
+    /// </summary>
+    /// <param name="str">
+    /// Receives a pointer to a newly allocated null-terminated string, which must be
+    /// released with the same allocator that produced it.
+    /// </param>
+    /// <param name="filters">The filter chain to describe.</param>
+    /// <param name="flags">Formatting flags, such as <see cref="LZMA_STR_ENCODER"/>.</param>
+    /// <param name="allocator">Allocator to use, or <see cref="IntPtr.Zero"/> for malloc.</param>
+    /// <returns><see cref="LZMA_OK"/> on success, or an error code.</returns>
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static unsafe partial int lzma_str_from_filters(
+        out IntPtr str,
+        LzmaFilter* filters,
+        uint flags,
+        IntPtr allocator);
+
+    /// <summary>
+    /// Produces a human-readable listing of the supported filters and their options.
+    /// </summary>
+    /// <param name="str">
+    /// Receives a pointer to a newly allocated null-terminated string, which must be
+    /// released with the same allocator that produced it.
+    /// </param>
+    /// <param name="filter_id">A specific filter ID, or <see cref="LZMA_VLI_UNKNOWN"/> for all.</param>
+    /// <param name="flags">Formatting flags.</param>
+    /// <param name="allocator">Allocator to use, or <see cref="IntPtr.Zero"/> for malloc.</param>
+    /// <returns><see cref="LZMA_OK"/> on success, or an error code.</returns>
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static partial int lzma_str_list_filters(
+        out IntPtr str,
+        ulong filter_id,
+        uint flags,
+        IntPtr allocator);
+
+    /// <summary>
+    /// Frees the options structs referenced by a filter chain.
+    /// </summary>
+    /// <remarks>
+    /// This releases what each entry points at and resets the ids; the array itself belongs
+    /// to the caller. Passing a different allocator than the one that populated the chain is
+    /// undefined behavior.
+    /// </remarks>
+    /// <param name="filters">The filter chain to release.</param>
+    /// <param name="allocator">The allocator originally used, or <see cref="IntPtr.Zero"/>.</param>
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static unsafe partial void lzma_filters_free(
+        LzmaFilter* filters,
+        IntPtr allocator);
+
+    /// <summary>
+    /// Returns the approximate memory usage of an encoder using the given filter chain.
+    /// </summary>
+    /// <param name="filters">The filter chain.</param>
+    /// <returns>Memory usage in bytes, or <see cref="ulong.MaxValue"/> if the chain is invalid.</returns>
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static unsafe partial ulong lzma_raw_encoder_memusage(LzmaFilter* filters);
+
+    /// <summary>
+    /// Returns the approximate memory usage of a decoder using the given filter chain.
+    /// </summary>
+    /// <param name="filters">The filter chain.</param>
+    /// <returns>Memory usage in bytes, or <see cref="ulong.MaxValue"/> if the chain is invalid.</returns>
+    [LibraryImport(LibLzma)]
+    [UnmanagedCallConv(CallConvs = [typeof(CallConvCdecl)])]
+    internal static unsafe partial ulong lzma_raw_decoder_memusage(LzmaFilter* filters);
 
     /// <summary>
     /// Initializes an encoder for the legacy .lzma (LZMA_Alone) format.

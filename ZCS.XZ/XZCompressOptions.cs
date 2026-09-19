@@ -58,6 +58,24 @@ public sealed class XZCompressOptions
     public XZFormat Format { get; set; } = XZFormat.Xz;
 
     /// <summary>
+    /// Gets or sets an explicit filter chain to use instead of <see cref="Level"/>.
+    /// Default is <c>null</c>, which selects LZMA2 from the preset.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// When set, the chain fully describes the compression, so <see cref="Level"/> and
+    /// <see cref="Extreme"/> are ignored — put the preset in the chain instead, as in
+    /// <c>"x86 lzma2:preset=9e"</c>.
+    /// </para>
+    /// <para>
+    /// Only the <c>.xz</c> format can record a filter chain, so combining this with
+    /// <see cref="XZFormat.LzmaAlone"/> is rejected when the stream is constructed.
+    /// The caller owns the chain and is responsible for disposing it.
+    /// </para>
+    /// </remarks>
+    public XZFilterChain? Filters { get; set; }
+
+    /// <summary>
     /// Computes the liblzma preset value from <see cref="Level"/> and <see cref="Extreme"/>.
     /// When <see cref="Extreme"/> is <c>true</c>, the <c>LZMA_PRESET_EXTREME</c> flag is OR'd
     /// into the preset.
@@ -91,11 +109,14 @@ public sealed class XZCompressOptions
     /// Builds the native multithreading options struct for this configuration.
     /// </summary>
     /// <returns>An <c>lzma_mt</c> struct ready for the multithreaded encoder.</returns>
-    internal LibLzmaNativeMethods.LzmaMt CreateMtOptions() => new()
+    internal unsafe LibLzmaNativeMethods.LzmaMt CreateMtOptions() => new()
     {
         threads = (uint)GetThreadCount(),
         preset = GetPreset(),
         check = LibLzmaNativeMethods.LZMA_CHECK_CRC64,
+
+        // liblzma ignores preset when filters is non-null.
+        filters = Filters is null ? IntPtr.Zero : (IntPtr)Filters.Handle,
     };
 
     /// <summary>
@@ -125,6 +146,11 @@ public sealed class XZCompressOptions
             return LibLzmaNativeMethods.lzma_stream_encoder_mt_memusage(ref mt);
         }
 
+        if (Filters is not null)
+        {
+            return Filters.GetEncoderMemoryUsage();
+        }
+
         return LibLzmaNativeMethods.lzma_easy_encoder_memusage(GetPreset());
     }
 
@@ -142,5 +168,7 @@ public sealed class XZCompressOptions
     /// if liblzma considers the current settings invalid.
     /// </returns>
     public ulong GetDecoderMemoryUsage()
-        => LibLzmaNativeMethods.lzma_easy_decoder_memusage(GetPreset());
+        => Filters is not null
+            ? Filters.GetDecoderMemoryUsage()
+            : LibLzmaNativeMethods.lzma_easy_decoder_memusage(GetPreset());
 }
