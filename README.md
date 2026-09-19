@@ -1,7 +1,10 @@
 # ZCS.XZ
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Build](https://github.com/zcsizmadia/ZCS.XZ/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/zcsizmadia/ZCS.XZ/actions/workflows/build.yml)
 [![NuGet](https://img.shields.io/nuget/v/ZCS.XZ.svg)](https://www.nuget.org/packages/ZCS.XZ)
+[![NuGet Downloads](https://img.shields.io/nuget/dt/ZCS.XZ.svg)](https://www.nuget.org/packages/ZCS.XZ)
+[![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0%20%7C%2010.0-512BD4.svg)](https://dotnet.microsoft.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 A high-performance .NET library for **XZ (LZMA2) compression and decompression**, built on top of the native [liblzma](https://tukaani.org/xz/) library via P/Invoke.
 
